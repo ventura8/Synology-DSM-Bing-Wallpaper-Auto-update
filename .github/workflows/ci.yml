@@ -1,0 +1,248 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    paths:
+      - '*.sh'
+      - 'tests/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  lint:
+    name: Lint Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+      - name: Run ShellCheck
+        run: shellcheck bing_wallpaper_auto_update.sh tests/*.sh
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Test Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: tests/Dockerfile.dsm_mock
+          load: true
+          tags: dsm-mock
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Run tests directly on script to ensure coverage capture.
+      - name: Execute Unit Tests
+        run: |
+          mkdir -p raw_coverage
+          chmod 777 raw_coverage
+          docker run --rm \
+            --security-opt seccomp=unconfined \
+            --cap-add SYS_PTRACE \
+            -v $PWD/raw_coverage:/app/coverage \
+            dsm-mock bash -c "export BING_RESOLUTION='4k' ENABLE_ARCHIVE='false' CHECK_ARCHIVE='false' && kcov --include-pattern=bing_wallpaper_auto_update.sh /app/coverage ./bing_wallpaper_auto_update.sh && ./verify_dsm_mock.sh"
+
+      - name: Upload Raw Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-coverage-unit
+          path: raw_coverage/
+          include-hidden-files: true
+
+  component-tests:
+    name: Component Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Test Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: tests/Dockerfile.dsm_mock
+          load: true
+          tags: dsm-mock
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Execute Component Tests
+        run: |
+          mkdir -p raw_coverage_comp
+          chmod 777 raw_coverage_comp
+          docker run --rm \
+            --security-opt seccomp=unconfined \
+            --cap-add SYS_PTRACE \
+            -v $PWD/raw_coverage_comp:/app/coverage \
+            dsm-mock bash -c "export BING_RESOLUTION='4k' ENABLE_ARCHIVE='true' CHECK_ARCHIVE='true' && kcov --include-pattern=bing_wallpaper_auto_update.sh /app/coverage ./bing_wallpaper_auto_update.sh && ./verify_dsm_mock.sh"
+
+      - name: Upload Component Raw Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-coverage-comp
+          path: raw_coverage_comp/
+          include-hidden-files: true
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Test Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: tests/Dockerfile.dsm_mock
+          load: true
+          tags: dsm-mock
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Execute E2E Tests
+        run: |
+          mkdir -p raw_coverage_e2e
+          chmod 777 raw_coverage_e2e
+          docker run --rm \
+            --security-opt seccomp=unconfined \
+            --cap-add SYS_PTRACE \
+            -v $PWD/raw_coverage_e2e:/app/coverage \
+            dsm-mock bash -c "export BING_RESOLUTION='1080p' ENABLE_ARCHIVE='false' CHECK_ARCHIVE='false' && kcov --include-pattern=bing_wallpaper_auto_update.sh /app/coverage ./bing_wallpaper_auto_update.sh && ./verify_dsm_mock.sh"
+
+      - name: Upload E2E Raw Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-coverage-e2e
+          path: raw_coverage_e2e/
+          include-hidden-files: true
+
+  coverage-report:
+    name: Merge & Publish Report
+    runs-on: ubuntu-latest
+    needs: [unit-tests, component-tests, e2e-tests]
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Test Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: tests/Dockerfile.dsm_mock
+          load: true
+          tags: dsm-mock
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Download Unit Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: raw-coverage-unit
+          path: coverage_inputs/unit
+
+      - name: Download Component Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: raw-coverage-comp
+          path: coverage_inputs/comp
+
+      - name: Download E2E Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: raw-coverage-e2e
+          path: coverage_inputs/e2e
+
+      - name: Merge Coverage Reports
+        run: |
+          mkdir -p coverage
+          chmod 777 coverage
+          
+          # Find all directories that contain coverage.db and merge them
+          docker run --rm \
+            --security-opt seccomp=unconfined \
+            --cap-add SYS_PTRACE \
+            -v $PWD:/workdir \
+            -w /workdir \
+            dsm-mock bash -c "DIRS=\$(find coverage_inputs -name coverage.db -exec dirname {} \;) && kcov --merge coverage \$DIRS"
+
+      - name: Detailed Per-File Summary
+        run: |
+            # Find the cobertura file in the output
+            FOUND_XML=$(find coverage -name "cobertura.xml" | head -n 1)
+            if [ -f "$FOUND_XML" ]; then
+                cp "$FOUND_XML" cobertura.xml
+                # Transform XML (split packages by class) for CodeCoverageSummary structure compatibility
+                python3 tests/transform_coverage.py cobertura.xml
+                python3 tests/generate_detailed_coverage.py cobertura.xml
+            else
+                echo "Coverage XML not found."
+                exit 1
+            fi
+
+      - name: Generate Coverage Summary
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: cobertura.xml
+          badge: false
+          fail_below_min: false
+          format: markdown
+          hide_branch_rate: false
+          hide_complexity: true
+          indicators: true
+          output: both
+          thresholds: '90 95'
+
+      - name: Publish Coverage Check
+        uses: 5monkeys/cobertura-action@master
+        with:
+          path: cobertura.xml
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          minimum_coverage: 90
+          fail_below_threshold: true
+          show_line: true
+          show_branch: true
+          link_missing_lines: true
+          only_changed_files: false
+
+      - name: Add Coverage PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          recreate: true
+          path: code-coverage-results.md
+
+      - name: Publish Summary to Job
+        run: |
+          cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Prepare HTML Report
+        run: |
+          mkdir -p html_report
+          # Find index.html
+          FOUND_INDEX=$(find coverage -name "index.html" | head -n 1)
+          if [ -n "$FOUND_INDEX" ]; then
+             cp -r "$(dirname "$FOUND_INDEX")/"* html_report/
+          fi
+
+      - name: Upload HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: html_report/
