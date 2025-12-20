@@ -1,0 +1,69 @@
+FROM ubuntu:22.04
+
+# Install dependencies required by the script
+# Consolidated apt-get to single layer for efficiency
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y \
+    wget \
+    file \
+    grep \
+    sed \
+    ca-certificates \
+    git \
+    build-essential \
+    cmake \
+    libcurl4-openssl-dev \
+    libdw-dev \
+    libelf-dev \
+    binutils-dev \
+    libiberty-dev \
+    zlib1g-dev \
+    python3 \
+    libssl-dev \
+    dos2unix \
+    && rm -rf /var/lib/apt/lists/* \
+    # Create necessary directory structure matching Synology DSM 7.2
+    && mkdir -p /usr/syno/etc \
+    && mkdir -p /usr/syno/synoman/webman/resources/images/2x/default_wallpaper/ \
+    && mkdir -p /usr/syno/synoman/webman/resources/images/1x/default_wallpaper/ \
+    && mkdir -p /volume1/web/wallpapers \
+    && mkdir -p /tmp \
+    # Create dummy synoinfo.conf
+    && echo 'login_background_customize=""' > /etc/synoinfo.conf \
+    && echo 'login_welcome_title=""' >> /etc/synoinfo.conf \
+    && echo 'login_welcome_msg=""' >> /etc/synoinfo.conf \
+    # Create dummy DSM 7 default wallpapers
+    && touch /usr/syno/synoman/webman/resources/images/2x/default_wallpaper/dsm7_01.jpg \
+    && touch /usr/syno/synoman/webman/resources/images/1x/default_wallpaper/dsm7_01.jpg
+
+
+
+# Build and Install kcov
+RUN git clone https://github.com/SimonKagstrom/kcov.git /tmp/kcov \
+    && cd /tmp/kcov \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make \
+    && make install \
+    && cd / \
+    && rm -rf /tmp/kcov
+
+WORKDIR /app
+
+# Copy the script and verification script
+# Copy the script and verification script
+COPY bing_wallpaper_auto_update.sh /app/
+COPY tests/verify_dsm_mock.sh /app/
+
+# Copy the mock wget
+COPY tests/mocks/wget /usr/bin/wget
+
+# Make scripts executable
+RUN chmod +x /app/bing_wallpaper_auto_update.sh \
+    && chmod +x /app/verify_dsm_mock.sh \
+    && chmod +x /usr/bin/wget \
+    && dos2unix /app/bing_wallpaper_auto_update.sh \
+    && dos2unix /app/verify_dsm_mock.sh \
+    && dos2unix /usr/bin/wget
+

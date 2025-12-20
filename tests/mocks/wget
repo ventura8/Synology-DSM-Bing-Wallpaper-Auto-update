@@ -1,0 +1,75 @@
+#!/bin/bash
+# Mock wget for Synology DSM Bing Wallpaper Script Tests
+
+# Define the expected mock response for the API call
+# We use a fixed date and content so we can assert exact values.
+MOCK_JSON='{"images":[{"startdate":"20230101","fullstartdate":"202301010700","enddate":"20230102","url":"/th?id=OHR.MockImage_EN-US123456789_UHD.jpg","urlbase":"/th?id=OHR.MockImage_EN-US123456789","copyright":"Mock Title (© Mock Credit)","title":"Mock Title","copyrightlink":"#","wp":true,"hsh":"mockhash","drk":1,"top":1,"bot":1,"hs":[]}]}'
+
+# Function to check if a string contains a substring
+contains() {
+    [[ $1 == *"$2"* ]]
+}
+
+# Parse arguments
+OUTPUT_FILE=""
+URL=""
+IS_O_FLAG=false
+
+for arg in "$@"; do
+    if [ "$arg" == "-O" ] || [ "$arg" == "-qO" ] || [ "$arg" == "-qO-" ]; then
+       IS_O_FLAG=true
+       continue
+    fi
+    # If the previous arg was -O (and not -O-), then this arg is the output file
+    # But wait, the script uses -qO- (stdout) or -qO filename
+    
+    if [[ "$arg" == http* ]]; then
+        URL="$arg"
+    elif [ "$IS_O_FLAG" == "true" ] && [ "$OUTPUT_FILE" == "" ] && [ "$arg" != "-" ]; then
+         # This is likely the output file if we haven't found one yet and it doesn't look like a URL
+         # The script uses `wget ... -qO "$TMP_FILE"` or `wget ... -qO- "$API_URL"`
+         # Actually the script is:
+         # 1. `wget -t 5 --no-check-certificate -qO- "$API_URL"`
+         # 2. `wget -t 5 --no-check-certificate "$PIC_URL" -qO "$TMP_FILE"`
+         
+         # My argument parsing here is a bit weak for general wget, but for this specific script:
+         OUTPUT_FILE="$arg"
+    fi
+done
+
+# Identification Logic
+if contains "$URL" "format=js"; then
+    # It's the API Request
+    # echo "Mocking API response..." >&2
+    echo "$MOCK_JSON"
+    exit 0
+elif contains "$URL" ".jpg"; then
+    # It's the Image Download Request
+    # echo "Mocking Image Download..." >&2
+    
+    # Create a dummy image file (checking if we have an output file)
+    # The script uses -qO "$TMP_FILE"
+    
+    # We need to find the output file argument properly.
+    # The script uses: wget ... -qO "$TMP_FILE"
+    # So the argument after -qO is the file.
+    
+    # Let's brute force find the output file arg if our loop failed or simply relying on the fact 
+    # that valid image content must be written.
+    
+    # Create a minimal valid JPEG header so `file` command recognizes it (optional but good)
+    # FF D8 FF E0
+    printf "\xff\xd8\xff\xe0\x00\x10\x4a\x46\x49\x46\x00\x01" > temp_mock_img.jpg
+    
+    if [ -n "$OUTPUT_FILE" ]; then
+        mv temp_mock_img.jpg "$OUTPUT_FILE"
+    else
+        # If output is stdout (which it isn't for image in this script, but for completeness)
+        cat temp_mock_img.jpg
+        rm temp_mock_img.jpg
+    fi
+    exit 0
+else
+    echo "Mock wget: URL not recognized: $URL" >&2
+    exit 1
+fi
