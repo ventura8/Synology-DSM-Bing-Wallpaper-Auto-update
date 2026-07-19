@@ -1,0 +1,62 @@
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.11.0-1
+    hooks:
+      - id: shfmt
+        args: ["-i", "2", "-ci", "-w"]
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        files: ^(tests|scripts)/.*\.py$
+
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+
+  - repo: local
+    hooks:
+      - id: line-length-check
+        name: Enforce non-Markdown line length <= 140
+        entry: python scripts/quality/check_line_length.py
+        language: system
+        pass_filenames: false
+      - id: script-complexity-check
+        name: Enforce script complexity thresholds
+        entry: python scripts/quality/check_complexity.py
+        language: system
+        pass_filenames: false
+      - id: powershell-lint
+        name: PSScriptAnalyzer lint
+        entry: python scripts/lint/run_powershell_lint.py
+        language: system
+        pass_filenames: false
+      - id: actionlint
+        name: GitHub Actions lint
+        entry: python scripts/lint/lint_actions.py
+        language: system
+        files: ^\.github/workflows/.*\.ya?ml$
