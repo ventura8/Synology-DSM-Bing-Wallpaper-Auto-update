@@ -12,3 +12,5 @@ The detailed documentation is organized into modular files for easier navigation
   - `bing_wallpaper_auto_update.sh` settings and defaults.
 - [Development & Standards](docs/development_standards.md)
   - Environment setup, coding standards, and mandatory coverage rules.
+- [Release Notes / GitHub Description](docs/release/v1.0.1-github-description.md)
+  - Full release summary for v1.0.1 and GitHub-ready change description.

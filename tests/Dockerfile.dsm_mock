@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 # Install dependencies required by the script
 # Consolidated apt-get to single layer for efficiency
@@ -41,6 +41,7 @@ RUN apt-get update && apt-get install -y \
 # Build and Install kcov
 RUN git clone https://github.com/SimonKagstrom/kcov.git /tmp/kcov \
     && cd /tmp/kcov \
+    && git checkout v43 \
     && mkdir build \
     && cd build \
     && cmake .. \
@@ -55,6 +56,7 @@ WORKDIR /app
 # Copy the script and verification script
 COPY bing_wallpaper_auto_update.sh /app/
 COPY tests/verify_dsm_mock.sh /app/
+COPY tests/run_kcov_cases.sh /app/
 
 # Copy the mock wget
 COPY tests/mocks/wget /usr/bin/wget
@@ -62,8 +64,9 @@ COPY tests/mocks/wget /usr/bin/wget
 # Make scripts executable
 RUN chmod +x /app/bing_wallpaper_auto_update.sh \
     && chmod +x /app/verify_dsm_mock.sh \
+    && chmod +x /app/run_kcov_cases.sh \
     && chmod +x /usr/bin/wget \
     && dos2unix /app/bing_wallpaper_auto_update.sh \
     && dos2unix /app/verify_dsm_mock.sh \
+    && dos2unix /app/run_kcov_cases.sh \
     && dos2unix /usr/bin/wget
-

@@ -3,6 +3,10 @@
 $dsmImage = "dsm-mock"
 $coverageBase = Join-Path $PWD "coverage"
 
+Write-Host "Running mandatory quality checks before tests..." -ForegroundColor Cyan
+& "$PSScriptRoot/../quality/quality_check.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Quality checks failed." }
+
 # Clean previous runs
 if (Test-Path $coverageBase) { Remove-Item -Recurse -Force $coverageBase }
 New-Item -ItemType Directory -Path $coverageBase | Out-Null
@@ -17,16 +21,19 @@ Write-Host "Starting Parallel Test Runs (Unit, Component, E2E)..." -ForegroundCo
 
 $testTasks = @(
     @{
-        Name = "Unit"
-        Cmd  = "docker run --rm --security-opt seccomp=unconfined --cap-add SYS_PTRACE -v `"${coverageBase}/unit:/app/coverage`" $dsmImage bash -c `"export BING_RESOLUTION='4k' ENABLE_ARCHIVE='false' CHECK_ARCHIVE='false' && kcov --include-pattern=bing_wallpaper_auto_update.sh /app/coverage ./bing_wallpaper_auto_update.sh && ./verify_dsm_mock.sh`""
+                Name = "Unit"
+                CoverageSubdir = "unit"
+                CoverageMode = "unit"
     },
     @{
-        Name = "Component"
-        Cmd  = "docker run --rm --security-opt seccomp=unconfined --cap-add SYS_PTRACE -v `"${coverageBase}/comp:/app/coverage`" $dsmImage bash -c `"export BING_RESOLUTION='4k' ENABLE_ARCHIVE='true' CHECK_ARCHIVE='true' && kcov --include-pattern=bing_wallpaper_auto_update.sh /app/coverage ./bing_wallpaper_auto_update.sh && ./verify_dsm_mock.sh`""
+                Name = "Component"
+                CoverageSubdir = "comp"
+                CoverageMode = "component"
     },
     @{
-        Name = "E2E"
-        Cmd  = "docker run --rm --security-opt seccomp=unconfined --cap-add SYS_PTRACE -v `"${coverageBase}/e2e:/app/coverage`" $dsmImage bash -c `"export BING_RESOLUTION='1080p' ENABLE_ARCHIVE='false' CHECK_ARCHIVE='false' && kcov --include-pattern=bing_wallpaper_auto_update.sh /app/coverage ./bing_wallpaper_auto_update.sh && ./verify_dsm_mock.sh`""
+                Name = "E2E"
+                CoverageSubdir = "e2e"
+                CoverageMode = "e2e"
     }
 )
 
@@ -35,23 +42,50 @@ foreach ($task in $testTasks) {
     New-Item -ItemType Directory -Path (Join-Path $coverageBase $task.Name.ToLower()) -Force | Out-Null
     Write-Host "Launching $($task.Name) tests..." -ForegroundColor Green
     $jobs += Start-Job -ScriptBlock {
-        param($cmd, $name)
+        param($taskConfig, $name, $basePath, $image)
         Write-Host "Running $name Job..."
-        Invoke-Expression $cmd
-    } -ArgumentList $task.Cmd, $task.Name
+        $coverageMount = "${basePath}/$($taskConfig.CoverageSubdir):/app/coverage"
+        $bashCommand = "./run_kcov_cases.sh '$($taskConfig.CoverageMode)' /app/coverage"
+        $dockerArgs = @(
+            "run",
+            "--rm",
+            "--security-opt",
+            "seccomp=unconfined",
+            "--cap-add",
+            "SYS_PTRACE",
+            "-v",
+            $coverageMount,
+            $image,
+            "bash",
+            "-c",
+            $bashCommand
+        )
+        & docker @dockerArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "$name job failed with exit code $LASTEXITCODE"
+        }
+    } -ArgumentList $task, $task.Name, $coverageBase, $dsmImage
 }
 
 Write-Host "Waiting for tests to complete..." -ForegroundColor Yellow
 Wait-Job $jobs | Out-Null
 
 # Check for failure
-$jobResults = Receive-Job $jobs
+$jobErrors = @()
+$jobResults = Receive-Job $jobs -ErrorAction SilentlyContinue -ErrorVariable jobErrors
 $jobResults | Write-Host
 
 foreach ($job in $jobs) {
     if ($job.State -ne "Completed") {
-        Write-Error "Job $($job.Name) failed with state $($job.State)"
+        throw "Job $($job.Name) failed with state $($job.State)"
     }
+}
+
+if ($jobErrors.Count -gt 0) {
+    foreach ($jobError in $jobErrors) {
+        Write-Host $jobError
+    }
+    throw "One or more parallel test jobs failed."
 }
 
 # 3. Merge Coverage Output
@@ -77,16 +111,30 @@ docker run --rm `
     -v "${PWD}:/workdir" `
     -w /workdir `
     $dsmImage bash -c "dos2unix coverage/merge_all.sh && chmod +x coverage/merge_all.sh && ./coverage/merge_all.sh"
+if ($LASTEXITCODE -ne 0) {
+    throw "Coverage merge failed."
+}
 
 # 4. Check for report
-$foundXmlPath = Get-ChildItem -Path "$coverageBase/merged" -Recurse -Filter "cobertura.xml" | Select-Object -First 1 | Select-Object -ExpandProperty FullName
+$foundXmlPath = Get-ChildItem -Path "$coverageBase/merged" -Recurse -Filter "cobertura.xml" |
+    Select-Object -First 1 |
+    Select-Object -ExpandProperty FullName
 
 if ($foundXmlPath) {
     Write-Host "Merged Coverage Report Found: $foundXmlPath" -ForegroundColor Green
-    
+
     # Transform XML for compatibility check
     Write-Host "Transforming XML..."
     python tests/transform_coverage.py "$foundXmlPath"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Coverage XML transform failed."
+    }
+
+    Write-Host "Enforcing minimum coverage threshold (90%)..." -ForegroundColor Cyan
+    python scripts/coverage_checks/check_coverage_threshold.py "$foundXmlPath" 90
+    if ($LASTEXITCODE -ne 0) {
+        throw "Coverage threshold check failed."
+    }
 
     # Display the cobertura summary
     [xml]$xml = Get-Content $foundXmlPath
@@ -101,31 +149,42 @@ if ($foundXmlPath) {
     Get-Content $foundXmlPath -TotalCount 5
     Write-Host "-------------------------------" -ForegroundColor Gray
 
-    # 5. Generate Text Summary using Local Python Script
-    # This proves the coverage reporting is working reliably locally
-    Write-Host "Generating Detailed Coverage Report (Python)..." -ForegroundColor Cyan
-    python tests/generate_detailed_coverage.py "$foundXmlPath"
-
-    # 6. Run Irongut CodeCoverageSummary locally (Best Effort)
+    # 5. Run Irongut CodeCoverageSummary locally (Best Effort)
     Write-Host "Running CodeCoverageSummary (CI Simulation)..." -ForegroundColor Cyan
-    
-    # We mount the directory containing the XML to /tmp/report
-    # And we assume the tool can read it from an absolute path if we pass it
-    # We use format 'markdown' to see the output
-    $xmlDir = Split-Path $foundXmlPath -Parent
-    
+
+    # Run CodeCoverageSummary from the report directory so a simple relative path works reliably.
+    $xmlDirInContainer = "/github/workspace/coverage/merged/kcov-merged"
+
     docker run --rm `
-        -v "${xmlDir}:/tmp/report" `
         -v "${PWD}:/github/workspace" `
-        -w "/github/workspace" `
+        -w "$xmlDirInContainer" `
         ghcr.io/irongut/codecoveragesummary:v1.3.0 `
-        commandline --files /tmp/report/*/cobertura.xml --badge true --fail false --format markdown --hidebranch false --hidecomplexity true --indicators true --output both --thresholds '90 95'
+        commandline `
+        --files cobertura.xml `
+        --badge true `
+        --fail false `
+        --format markdown `
+        --hidebranch false `
+        --hidecomplexity false `
+        --indicators true `
+        --output both `
+        --thresholds '90 95'
+    if ($LASTEXITCODE -ne 0) {
+        throw "CodeCoverageSummary execution failed."
+    }
 
     # Move the badge to assets
     if (Test-Path "badge.svg") {
         Write-Host "Updating assets/coverage.svg..." -ForegroundColor Green
         if (-not (Test-Path "assets")) { New-Item -ItemType Directory -Path "assets" | Out-Null }
         Move-Item -Force "badge.svg" "assets/coverage.svg"
+    }
+
+    # 6. Generate final text summary last so local output ends with overall and per-file metrics.
+    Write-Host "Generating Detailed Coverage Report (Python)..." -ForegroundColor Cyan
+    python tests/generate_detailed_coverage.py "$foundXmlPath"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Detailed coverage report generation failed."
     }
 
 }

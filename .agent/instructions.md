@@ -1,8 +1,14 @@
 # AI Instructions
 
 ## Workflow Priorities
-1.  **Fix Linting First**: Always resolve all linting issues (flake8, mypy, etc.) *before* attempting to fix or run tests.
+1.  **Fix Linting First**: Always resolve all linting issues (shfmt, ShellCheck, Ruff, Mypy, yamllint, actionlint, PSScriptAnalyzer) *before* attempting to fix or run tests.
 2.  **Fix Tests Second**: Once linting is clean, proceed to fix and run tests.
+
+## Mandatory Quality Gate
+-   Run full quality checks with `./scripts/quality/quality_check.ps1` (PowerShell) or `./scripts/quality/quality_check.sh` (Bash).
+-   All quality checks are mandatory both locally and in CI.
+-   Do not add suppressions, disable directives, or ignores to bypass lint findings.
+-   Enforce 140-character maximum line length for all non-Markdown text files.
 
 ## Testing & Coverage
 -   **Execution**: Run tests after linting is complete.

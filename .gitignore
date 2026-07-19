@@ -18,5 +18,15 @@ coverage_inputs/
 coverage_final/
 local_summary.md
 
+# --- Python / Quality Tooling Caches ---
+.venv/
+venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.pre-commit-cache/
+
 # Un-ignore assets for documentation screenshots
 !assets/*.png
