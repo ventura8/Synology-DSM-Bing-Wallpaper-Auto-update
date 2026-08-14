@@ -1,6 +1,7 @@
 # **🖼️ Synology DSM 7.2 Bing Daily Wallpaper Script (4K)**
 
 [![Script](https://img.shields.io/badge/Script-Shell-blue.svg)](https://github.com/ventura8/Synology-DSM-Bing-Wallpaper-Auto-update)
+[![Release](https://img.shields.io/badge/release-v1.0.2-blue.svg)](docs/releases/v1.0.2.md)
 ![Coverage](assets/coverage.svg)
 
 This bash script automates the process of fetching the daily Bing wallpaper in **4K (UHD)** resolution and applying it to your Synology DSM 7.2 Login Screen. It intelligently extracts metadata to update the login screen's **Welcome Title** and **Message** with the image description and copyright credit.
@@ -20,9 +21,11 @@ This bash script automates the process of fetching the daily Bing wallpaper in *
   * **📝 Title:** Sets the "Welcome Title" to the image description (e.g., *"Tufted titmouse perched on pine boughs..."*).
   * **©️ Message:** Sets the "Welcome Message" to the photographer/agency credit (e.g., *"© Tim Laman/NPL/Minden Pictures"*).
 * **DSM 7 Native Support:** Updates both the legacy `/etc/synoinfo.conf` and the specific DSM 7 resource files (`dsm7_01.jpg`) to ensure the change is visible.
+* **🔒 Safe Downloads:** TLS certificate verification stays enabled; downloads are checked for JPEG magic bytes before any system files are overwritten.
 * **🗄️ Detailed Archiving:** Optional archiving saves files with full metadata in the filename:
   * Format: `YYYYMMDD - Image Title - Photographer Credit.jpg`
   * Example: `20231027 - Tufted titmouse - Tim Laman.jpg`
+  * Archive dates are validated and paths are kept under `SAVE_PATH`.
 
 ## **📋 Prerequisites**
 
@@ -110,21 +113,26 @@ To have the wallpaper update automatically every day:
 
 ## **🔍 How It Works**
 
-1. **Fetching:** Calls the Bing `HPImageArchive` API to get the JSON data for the daily image.
+1. **Fetching:** Calls the Bing `HPImageArchive` API over HTTPS with TLS verification to get the JSON data for the daily image.
 2. **Parsing:**
    * Uses `grep` and `sed` to parse the JSON.
    * Splits the copyright string `Description (© Credit)` into two separate variables: `TITLE` and `COPYRIGHT`.
-3. **System Update:**
+   * Sanitizes title/copyright before writing DSM config values.
+3. **Download & Validate:** Downloads the image with TLS verification, then confirms JPEG SOI magic bytes before touching system paths.
+4. **System Update:**
    * Modifies `/etc/synoinfo.conf` to set `login_welcome_title` and `login_welcome_msg`.
    * Copies the image to `/usr/syno/etc/login_background.jpg`.
-4. **DSM 7 Override:**
+5. **DSM 7 Override:**
    * Overwrites the default resource file at `/usr/syno/synoman/webman/resources/images/2x/default_wallpaper/dsm7_01.jpg`.
+6. **Archive (optional):** When enabled, validates the Bing date (`YYYYMMDD`) and saves under `SAVE_PATH` only.
 
 ## **🛠️ Troubleshooting**
 
 | Issue | Solution |
 | :---- | :---- |
 | **Permissions Error** | Ensure the task is running as **root**, not your admin user. |
+| **Certificate / Download Errors** | Keep CA certificates up to date on the NAS. Do not disable TLS verification. |
+| **Rejected Download (not a JPEG)** | The script refuses non-JPEG payloads. Re-run after network issues clear; do not bypass validation. |
 | **Image Not Changing** | Try clearing your browser cache or opening the login page in Incognito mode. DSM caches background images aggressively. |
 | **DSM Updates** | Major DSM updates often reset system files. If the wallpaper stops updating after an update, run the script manually once to re-apply the changes. |
 
