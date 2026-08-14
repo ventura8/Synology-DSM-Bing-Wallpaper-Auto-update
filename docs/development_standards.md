@@ -2,6 +2,8 @@
 
 This document outlines the coding standards, environment management, and testing requirements for the project.
 
+**Current release:** [v1.0.2](releases/v1.0.2.md)
+
 ## Environment & Dependency Management
 
 - **Local Development**: The project uses Docker to simulate a Synology DSM environment for testing.
@@ -34,8 +36,11 @@ This document outlines the coding standards, environment management, and testing
 - **Metadata Handling**:
   - Ensure correct parsing of Bing API JSON.
   - Titles and Copyright descriptions should be sanitized for usage in `synoinfo.conf`.
+  - Archive dates from the API must be validated (Bing `YYYYMMDD`) before use in filenames.
 - **System Safety**:
   - Always check for file existence before overwriting.
+  - Keep TLS certificate verification enabled on all downloads (`wget` must not use `--no-check-certificate`).
+  - Validate downloaded content is JPEG (SOI magic bytes) before writing system paths.
   - Log significant actions for troubleshooting.
 
 ## Testing & Coverage

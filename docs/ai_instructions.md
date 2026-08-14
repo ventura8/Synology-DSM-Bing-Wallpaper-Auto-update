@@ -1,16 +1,22 @@
 # AI Instructions: Synology-DSM-Bing-Wallpaper-Auto-update
 
-This document provides technical guidance for AI agents and developers working on this project.
+Guidance for AI agents and developers working on this project.
 
-The detailed documentation is organized into modular files for easier navigation and maintainability.
+## Agent law (source of truth)
 
-## Documentation Index
+- [AGENTS.md](../AGENTS.md) — project constitution (gates, mocking, coverage, DSM invariants)
+- [.agents/skills/](../.agents/skills/) — invokable workflow playbooks:
+  - `code-linter`, `test-runner`, `pipeline-runner`
+  - `ci-maintainer`, `release-hygiene`
+  - `resolve-pr-comments`, `review-with-coderabbit`
 
-- [Project Overview & Logic](docs/project_overview.md)
-  - General goals and how the script interacts with Synology DSM.
-- [Configuration](docs/configuration.md)
-  - `bing_wallpaper_auto_update.sh` settings and defaults.
-- [Development & Standards](docs/development_standards.md)
-  - Environment setup, coding standards, and mandatory coverage rules.
-- [Release Notes / GitHub Description](docs/release/v1.0.1-github-description.md)
-  - Full release summary for v1.0.1 and GitHub-ready change description.
+Thin mirrors (`.agent/instructions.md`, `.instructions.md`,
+`.github/copilot-instructions.md`, `.agent/prompt.md`, `.prompt.md`) point at
+`AGENTS.md` and must not fork rules.
+
+## Human documentation index
+
+- [Project Overview & Logic](project_overview.md)
+- [Configuration](configuration.md)
+- [Development & Standards](development_standards.md)
+- [Release notes](releases/v1.0.2.md) (prior: [v1.0.1](releases/v1.0.1.md))

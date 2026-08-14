@@ -1,8 +1,8 @@
 # Agent Prompt Contract
 
-- Apply formatting before lint-driven refactors.
-- Never use lint suppressions, disable directives, or ignore lists to hide violations.
-- Treat pre-commit checks as mandatory quality policy.
-- Keep line length at 140 characters maximum for all non-Markdown text files.
-- Preserve script behavior when modifying shell and coverage workflows.
-- Validate local and CI parity after any workflow or tooling change.
+Follow root [`AGENTS.md`](../AGENTS.md) and [`.agents/skills/`](../.agents/skills/).
+
+- Autofix/format before hand-editing lint failures; no suppressions.
+- Treat pre-commit / `quality_check` as mandatory.
+- Line length ≤140 for non-Markdown; coverage ≥90% with local badge updates.
+- Preserve product script behavior; keep local and CI quality equivalent.

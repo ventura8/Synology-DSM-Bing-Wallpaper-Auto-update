@@ -25,6 +25,10 @@ IS_O_FLAG=false
 MOCK_MODE="${MOCK_WGET_MODE:-default}"
 
 for arg in "$@"; do
+  if [ "$arg" == "--no-check-certificate" ]; then
+    echo "Mock wget: TLS verification must stay enabled (--no-check-certificate rejected)" >&2
+    exit 1
+  fi
   if [ "$arg" == "-O" ] || [ "$arg" == "-qO" ] || [ "$arg" == "-qO-" ]; then
     IS_O_FLAG=true
     continue
@@ -38,8 +42,8 @@ for arg in "$@"; do
     # This is likely the output file if we haven't found one yet and it doesn't look like a URL
     # The script uses `wget ... -qO "$TMP_FILE"` or `wget ... -qO- "$API_URL"`
     # Actually the script is:
-    # 1. `wget -t 5 --no-check-certificate -qO- "$API_URL"`
-    # 2. `wget -t 5 --no-check-certificate "$PIC_URL" -qO "$TMP_FILE"`
+    # 1. `wget -t 5 -qO- "$API_URL"`
+    # 2. `wget -t 5 "$PIC_URL" -qO "$TMP_FILE"`
 
     # My argument parsing here is a bit weak for general wget, but for this specific script:
     OUTPUT_FILE="$arg"
@@ -59,6 +63,12 @@ if contains "$URL" "format=js"; then
       ;;
     empty_url)
       echo '{"images":[{"enddate":"20230102","url":"","copyright":"Mock Title (© Mock Credit)"}]}'
+      exit 0
+      ;;
+    traversal_date)
+      echo '{"images":[{"enddate":"../../etc/cron.d/x",' \
+        '"url":"/th?id=OHR.MockImage_EN-US123456789_UHD.jpg",' \
+        '"copyright":"Mock Title (© Mock Credit)"}]}'
       exit 0
       ;;
   esac
@@ -87,6 +97,15 @@ elif contains "$URL" ".jpg"; then
     exit 0
   fi
 
+  if [ "$MOCK_MODE" = "non_jpeg_download" ]; then
+    if [ -n "$OUTPUT_FILE" ]; then
+      printf 'not-a-jpeg-payload' >"$OUTPUT_FILE"
+    else
+      printf 'not-a-jpeg-payload'
+    fi
+    exit 0
+  fi
+
   # It's the Image Download Request
   # echo "Mocking Image Download..." >&2
 
@@ -98,7 +117,7 @@ elif contains "$URL" ".jpg"; then
   # So the argument after -qO is the file.
 
   if [ -n "$OUTPUT_FILE" ]; then
-    # Create a minimal valid JPEG header so `file` command recognizes it (optional but good)
+    # Create a minimal valid JPEG header so SOI magic-byte checks pass
     # FF D8 FF E0
     printf "\xff\xd8\xff\xe0\x00\x10\x4a\x46\x49\x46\x00\x01" >"$OUTPUT_FILE"
   else

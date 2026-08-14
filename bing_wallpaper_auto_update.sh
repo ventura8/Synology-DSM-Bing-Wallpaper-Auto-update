@@ -2,6 +2,7 @@
 
 # ==============================================================================
 # Synology DSM 7.2 Bing Daily Wallpaper Script (4K/UHD)
+# Version: 1.0.2
 #
 # Description:
 # This script downloads the daily Bing wallpaper and updates the DSM login screen.
@@ -84,12 +85,61 @@ fail_invalid_response() {
   exit 1
 }
 
+sanitize_conf_value() {
+  # Strip characters that break or expand inside synoinfo.conf quoted values.
+  # Use octal escapes so tr does not treat backslash as an escape introducer.
+  # \042=" \140=` \134=\ \044=$ \012=LF \015=CR
+  printf '%s' "$1" | tr -d '\042\140\134\044\012\015'
+}
+
+validate_downloaded_jpeg() {
+  # Require JPEG SOI (FF D8 FF) before any system path writes.
+  local magic
+  magic=$(dd if="$TMP_FILE" bs=3 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n')
+  if [ "$magic" != "ffd8ff" ]; then
+    echo "Error: Downloaded file is not a valid JPEG."
+    exit 1
+  fi
+}
+
+validate_archive_date() {
+  # Bing enddate is YYYYMMDD; reject anything else to block path traversal.
+  SAFE_DATE=$(printf '%s' "$DATE" | tr -cd '0-9')
+  if [ -z "$SAFE_DATE" ] || [ "${#SAFE_DATE}" -ne 8 ] || [ "$SAFE_DATE" != "$DATE" ]; then
+    echo "Error: Invalid date from API."
+    exit 1
+  fi
+}
+
+ensure_archive_within_save_path() {
+  # When realpath is available, confirm the archive stays under SAVE_PATH.
+  # Resolve the parent dir (file may not exist yet) and append the basename.
+  if ! command -v realpath >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local resolved_save
+  local resolved_parent
+  local archive_base
+  resolved_save=$(realpath "$SAVE_PATH")
+  resolved_parent=$(realpath "$(dirname "$ARCHIVE_FILE")")
+  archive_base=$(basename "$ARCHIVE_FILE")
+  ARCHIVE_FILE="${resolved_parent}/${archive_base}"
+  case "$ARCHIVE_FILE" in
+    "$resolved_save"/*) return 0 ;;
+    *)
+      echo "Error: Archive path escapes SAVE_PATH."
+      exit 1
+      ;;
+  esac
+}
+
 fetch_picture_info() {
   local api_url="$1"
 
   # --- Step 1: Fetch Image Info ---
   echo "Fetching Bing Wallpaper info ($BING_RESOLUTION - $BING_MARKET)..."
-  PIC_INFO=$(wget -t 5 --no-check-certificate -qO- "$api_url")
+  PIC_INFO=$(wget -t 5 -qO- "$api_url")
 
   # Basic validation before extracting fields.
   echo "$PIC_INFO" | grep -q enddate || fail_invalid_response
@@ -109,6 +159,9 @@ extract_metadata() {
   TEMP_COPYRIGHT="${FULL_COPYRIGHT##* (}"
   COPYRIGHT="${TEMP_COPYRIGHT%)}"
 
+  TITLE=$(sanitize_conf_value "$TITLE")
+  COPYRIGHT=$(sanitize_conf_value "$COPYRIGHT")
+
   echo "Date: $DATE"
   echo "Title: $TITLE"
   echo "Copyright: $COPYRIGHT"
@@ -117,13 +170,15 @@ extract_metadata() {
 
 download_image() {
   # --- Step 2: Download Image ---
-  wget -t 5 --no-check-certificate "$PIC_URL" -qO "$TMP_FILE"
+  wget -t 5 "$PIC_URL" -qO "$TMP_FILE"
 
   # Verify the downloaded file is non-empty before updating system files.
   [ -s "$TMP_FILE" ] || {
     echo "Error: Download failed."
     exit 1
   }
+
+  validate_downloaded_jpeg
 }
 
 update_system_config() {
@@ -172,7 +227,8 @@ archive_image() {
     SAFE_COPYRIGHT=$(echo "$COPYRIGHT" | tr -cd '[:alnum:] .-')
 
     # Format: Date - Title - Copyright.jpg.
-    ARCHIVE_FILE="$SAVE_PATH/${DATE} - ${SAFE_TITLE} - ${SAFE_COPYRIGHT}.jpg"
+    ARCHIVE_FILE="$SAVE_PATH/${SAFE_DATE} - ${SAFE_TITLE} - ${SAFE_COPYRIGHT}.jpg"
+    ensure_archive_within_save_path
     cp -f "$TMP_FILE" "$ARCHIVE_FILE"
     chmod 644 "$ARCHIVE_FILE"
     echo "Archived image to: $ARCHIVE_FILE"
@@ -193,6 +249,9 @@ main() {
   ensure_archive_dir
   fetch_picture_info "$API_URL"
   extract_metadata
+  if [ "$ENABLE_ARCHIVE" == "true" ]; then
+    validate_archive_date
+  fi
   download_image
   update_system_config
   update_dsm7_resources
