@@ -22,7 +22,7 @@ def _load_module() -> Any:
 
 
 def _write_cobertura(path: Path, line_rate: float) -> None:
-    xml = '<?xml version="1.0" encoding="UTF-8"?>\n' f'<coverage line-rate="{line_rate}" branches-valid="0" branches-covered="0" />\n'
+    xml = f'<?xml version="1.0" encoding="UTF-8"?>\n<coverage line-rate="{line_rate}" branches-valid="0" branches-covered="0" />\n'
     path.write_text(xml, encoding="utf-8")
 
 

@@ -1,0 +1,111 @@
+---
+name: Release
+
+"on":
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Release Tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      notes: ${{ steps.version.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify tagged commit is on main
+        run: |
+          set -euo pipefail
+          git fetch origin main --no-tags
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/main"; then
+            echo "::error::Tag ${GITHUB_REF#refs/tags/} points to ${GITHUB_SHA}, which is not on origin/main." >&2
+            exit 1
+          fi
+
+      - name: Verify CI pipeline passed for tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          required_jobs=(
+            "Quality Checks"
+            "Unit Tests"
+            "Component Tests"
+            "E2E Tests"
+            "Merge & Publish Report"
+          )
+          runs_api="/repos/${GITHUB_REPOSITORY}/actions/runs"
+          runs_api="${runs_api}?head_sha=${GITHUB_SHA}&event=push&per_page=20"
+          jq_filter='[.workflow_runs[] | select(.path == ".github/workflows/ci.yml"'
+          jq_filter="${jq_filter} and .conclusion == \"success\")][0].id // empty"
+          run_id="$(gh api "${runs_api}" --jq "${jq_filter}")"
+          if [ -z "${run_id}" ]; then
+            echo "::error::No successful CI Pipeline run for ${GITHUB_SHA}." >&2
+            exit 1
+          fi
+          jobs_api="/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs?per_page=100"
+          failed=0
+          for job in "${required_jobs[@]}"; do
+            conclusion="$(gh api "${jobs_api}" \
+              --jq --arg name "${job}" "[.jobs[] | select(.name == \$name)][0].conclusion // empty")"
+            if [ "${conclusion}" != "success" ]; then
+              echo "::error::Required CI job '${job}' conclusion: ${conclusion:-missing}" >&2
+              failed=1
+            fi
+          done
+          if [ "${failed}" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Resolve tag and release notes
+        id: version
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF#refs/tags/}"
+          notes="docs/releases/${tag}.md"
+          if [[ ! -f "${notes}" ]]; then
+            echo "::error::Missing ${notes} — write release notes before tagging (see .agents/skills/release/SKILL.md)." >&2
+            exit 1
+          fi
+          {
+            echo "tag=${tag}"
+            echo "notes=${notes}"
+          } >>"$GITHUB_OUTPUT"
+
+  release:
+    name: Publish GitHub Release
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build release checksums
+        run: |
+          set -euo pipefail
+          sha256sum bing_wallpaper_auto_update.sh > SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3.0.2
+        with:
+          tag_name: ${{ needs.validate.outputs.tag }}
+          name: ${{ needs.validate.outputs.tag }}
+          body_path: ${{ needs.validate.outputs.notes }}
+          files: |
+            bing_wallpaper_auto_update.sh
+            SHA256SUMS

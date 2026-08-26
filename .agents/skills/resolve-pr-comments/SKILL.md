@@ -89,6 +89,8 @@ Use GraphQL (see [reference.md](reference.md)). Work only threads with
 - After every fix, run `./scripts/quality/quality_check.sh`.
 - When product or test files change, also run targeted
   `./scripts/testing/run_tests_local.ps1` checks as applicable.
+- Update all relevant markdown in the same change set — see root `AGENTS.md`
+  § Always Update Relevant Markdown.
 - Commit only when the user asked; otherwise leave changes ready and still
   reply/resolve once the fix is in the tree or committed per session rules.
 - Never add lint suppressions to satisfy a comment.

@@ -8,8 +8,9 @@ backgrounds, and updates the login welcome title and message from Bing metadata.
 
 - **Product entrypoint**: [`bing_wallpaper_auto_update.sh`](bing_wallpaper_auto_update.sh)
 - **Runtime target**: Synology NAS on DSM 7.x, run as **root** (Task Scheduler or SSH)
-- **Tooling**: Python 3.10–3.12 (Ruff, Mypy, coverage helpers), PowerShell local
-  orchestration, Docker DSM mock + kcov for tests
+- **Tooling**: Python 3.10–3.12 (min 3.10; Ruff, Mypy, coverage helpers),
+  PowerShell **7.4.14+** local orchestration / PSScriptAnalyzer, Docker DSM mock
+  + kcov for tests
 - **Human docs**: [`docs/project_overview.md`](docs/project_overview.md),
   [`docs/configuration.md`](docs/configuration.md),
   [`docs/development_standards.md`](docs/development_standards.md)
@@ -99,6 +100,11 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
   `main` / `master`.
 - Order: **quality** → parallel **unit / component / e2e** → **coverage-report**
   (merge, transform, sticky PR comment, hard 90% gate).
+- Release: [`.github/workflows/release.yml`](.github/workflows/release.yml) on
+  `v*` tag push — validates the tag is on `main` and CI Pipeline succeeded for
+  that commit, then publishes the GitHub Release from `docs/releases/<tag>.md`
+  (fails closed if that file is missing) and attaches
+  `bing_wallpaper_auto_update.sh` + `SHA256SUMS`. See the `release` skill.
 - Local quality and CI quality must stay equivalent (same pre-commit / quality
   scripts). Do not add CI-only skips that weaken local gates.
 - Pin GitHub Actions to **stable final versions** (no floating `@main` / `@master`
@@ -108,7 +114,7 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
 ## Command Execution & Live Reporting
 
 - Stream quality and test commands live in the terminal so progress is visible.
-- For long runs, also capture logs under `reports/agent-logs/`:
+- For long runs, also capture logs under `reports/agent-logs/` (gitignored):
 
   ```bash
   set -euo pipefail
@@ -120,14 +126,27 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
 - Prefer project scripts (`quality_check.*`, `run_tests_local.ps1`) over ad-hoc
   partial tool invocations when validating a change set.
 
-## Always Update Agent Docs
+## Always Update Relevant Markdown
 
-- On bug fixes and features alike, update agent markdown in the **same change set**
-  when rules, commands, gates, or product invariants change.
-- Update root `AGENTS.md` for project-wide law; update the relevant
-  `.agents/skills/*/SKILL.md` (and companions) when a workflow’s steps change.
-- Capture new invariants and failure modes — not a changelog dump.
-- Outdated agent docs are incomplete work (same as missing tests or a stale badge).
+On **every** change set — bug fixes, features, dependency bumps, CI edits, or
+agent workflow changes — update **all relevant markdown** in the same commit.
+Do not leave docs stale relative to the code you touched.
+
+- **Project law**: root `AGENTS.md` when gates, commands, invariants, or the
+  skill index change.
+- **Skills**: the matching `.agents/skills/*/SKILL.md` (and companions such as
+  `reference.md` / `examples.md`) when that workflow's steps, commands, or
+  completion criteria change.
+- **Human docs**: `README.md`, `docs/*.md`, and `docs/releases/*.md` when
+  behavior, configuration, setup, or release content changes.
+- **Thin mirrors** (`CLAUDE.md`, `GEMINI.md`, `.agent/instructions.md`,
+  `.instructions.md`, `.github/copilot-instructions.md`, `.agent/prompt.md`,
+  `.prompt.md`, `docs/ai_instructions.md`): keep pointing at `AGENTS.md` and
+  skills; update only when links, paths, or the skill index drift — never fork
+  rules here.
+
+Capture new invariants and failure modes — not a changelog dump. Outdated docs
+are incomplete work (same as missing tests or a stale badge).
 
 ## Wallpaper / DSM Script Invariants
 
@@ -167,11 +186,13 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
 | coverage-guardian / `test-runner` | [`.agents/skills/test-runner/`](.agents/skills/test-runner/) | DSM mock tests, kcov, 90%, badge |
 | `pipeline-runner` | [`.agents/skills/pipeline-runner/`](.agents/skills/pipeline-runner/) | Full local quality + tests gate |
 | ci-maintainer | [`.agents/skills/ci-maintainer/`](.agents/skills/ci-maintainer/) | Workflow pins, CI↔local parity |
+| release | [`.agents/skills/release/`](.agents/skills/release/) | Cut a tagged release: notes, docs, tag/push |
 | release-hygiene | [`.agents/skills/release-hygiene/`](.agents/skills/release-hygiene/) | Docs and agent guidance aligned with checks |
 | `resolve-pr-comments` | [`.agents/skills/resolve-pr-comments/`](.agents/skills/resolve-pr-comments/) | Verify, fix/skip, reply, resolve GH threads |
 | `review-with-coderabbit` | [`.agents/skills/review-with-coderabbit/`](.agents/skills/review-with-coderabbit/) | User-gated CodeRabbit review / findings |
 
-Thin mirrors ([`.agent/instructions.md`](.agent/instructions.md),
+Thin mirrors ([`CLAUDE.md`](CLAUDE.md), [`GEMINI.md`](GEMINI.md),
+[`.agent/instructions.md`](.agent/instructions.md),
 [`.instructions.md`](.instructions.md),
 [`.github/copilot-instructions.md`](.github/copilot-instructions.md),
 [`.agent/prompt.md`](.agent/prompt.md),

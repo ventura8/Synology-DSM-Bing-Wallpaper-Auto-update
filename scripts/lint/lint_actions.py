@@ -18,7 +18,7 @@ def main() -> int:
         f"{repo_root}:/repo",
         "-w",
         "/repo",
-        "rhysd/actionlint:1.7.7",
+        "rhysd/actionlint:1.7.12",
     ]
     result = subprocess.run(cmd, check=False)
     if result.returncode != 0:

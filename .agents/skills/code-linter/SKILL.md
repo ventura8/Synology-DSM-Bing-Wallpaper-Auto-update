@@ -48,5 +48,5 @@ files without suppressions or hook bypasses.
 
    - `quality_check.sh` / `.ps1` exits 0.
    - No new ignores or disable directives.
-   - If agent-facing lint commands changed, update `AGENTS.md` and this skill in
-     the same change set.
+   - All relevant markdown updated in the same change set — see root `AGENTS.md`
+     § Always Update Relevant Markdown

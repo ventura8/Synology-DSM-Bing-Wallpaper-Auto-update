@@ -224,7 +224,7 @@ report skipped and stop.
 
 | Verdict | Action |
 | --- | --- |
-| Valid | Smallest safe fix; run `./scripts/quality/quality_check.sh` and tests when files are modified |
+| Valid | Smallest safe fix; run `./scripts/quality/quality_check.sh` and tests when files are modified; update all relevant markdown in the same change set — see root `AGENTS.md` § Always Update Relevant Markdown |
 | Not valid | Skip with reason (especially if conflicts with `AGENTS.md`) |
 | Blocked / unsure | Ask the user; do not guess |
 

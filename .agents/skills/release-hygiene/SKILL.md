@@ -26,17 +26,21 @@ repository actually enforces.
    - Coverage floor stated as **90%** everywhere it is mentioned
    - Badge rule: local update of `assets/coverage.svg`; CI does not refresh it
    - DSM root requirement, config knobs, and apply paths match the product script
-   - Thin mirrors (`.agent/instructions.md`, `.instructions.md`,
-     `.github/copilot-instructions.md`, `.agent/prompt.md`, `.prompt.md`,
-     `docs/ai_instructions.md`) may link to `AGENTS.md` and `.agents/skills/`
-     playbooks — they must not duplicate or conflict with those sources or invent
-     alternate gates
+   - Thin mirrors (`CLAUDE.md`, `GEMINI.md`, `.agent/instructions.md`,
+     `.instructions.md`, `.github/copilot-instructions.md`, `.agent/prompt.md`,
+     `.prompt.md`, `docs/ai_instructions.md`) may link to `AGENTS.md` and
+     `.agents/skills/` playbooks — they must not duplicate or conflict with
+     those sources or invent alternate gates
 
 1. **Same change set**: When enforcement changes, update human docs and agent
-   docs together. Treat stale guidance as incomplete release hygiene.
+   docs together. On every change set, update all relevant markdown touched by
+   the work — see root `AGENTS.md` § Always Update Relevant Markdown. Treat
+   stale guidance as incomplete release hygiene.
 
 1. **Completion criteria**:
 
    - No contradictory thresholds or commands across docs
    - Agent skill index in `AGENTS.md` lists existing skills only
    - Release notes / README do not promise checks the repo no longer runs
+   - All relevant markdown updated in the same change set — see root `AGENTS.md`
+     § Always Update Relevant Markdown

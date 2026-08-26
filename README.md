@@ -1,7 +1,7 @@
 # **🖼️ Synology DSM 7.2 Bing Daily Wallpaper Script (4K)**
 
 [![Script](https://img.shields.io/badge/Script-Shell-blue.svg)](https://github.com/ventura8/Synology-DSM-Bing-Wallpaper-Auto-update)
-[![Release](https://img.shields.io/badge/release-v1.0.2-blue.svg)](docs/releases/v1.0.2.md)
+[![Release](https://img.shields.io/badge/release-v1.0.3-blue.svg)](docs/releases/v1.0.3.md)
 ![Coverage](assets/coverage.svg)
 
 This bash script automates the process of fetching the daily Bing wallpaper in **4K (UHD)** resolution and applying it to your Synology DSM 7.2 Login Screen. It intelligently extracts metadata to update the login screen's **Welcome Title** and **Message** with the image description and copyright credit.

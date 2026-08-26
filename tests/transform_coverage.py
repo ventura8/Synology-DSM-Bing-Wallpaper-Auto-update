@@ -264,9 +264,9 @@ def generate_badge(line_rate: str, output_path: str = "badge.svg") -> None:
             fill="#010101"
             fill-opacity=".3"
             transform="scale(.1)"
-            textLength="{label_width*10 - 100}"
+            textLength="{label_width * 10 - 100}"
         >{label_text}</text>
-        <text x="{int(label_x)}" y="140" transform="scale(.1)" fill="#fff" textLength="{label_width*10 - 100}">{label_text}</text>
+        <text x="{int(label_x)}" y="140" transform="scale(.1)" fill="#fff" textLength="{label_width * 10 - 100}">{label_text}</text>
         <text
             aria-hidden="true"
             x="{int(value_x)}"
@@ -274,9 +274,9 @@ def generate_badge(line_rate: str, output_path: str = "badge.svg") -> None:
             fill="#010101"
             fill-opacity=".3"
             transform="scale(.1)"
-            textLength="{value_width*10 - 100}"
+            textLength="{value_width * 10 - 100}"
         >{value_text}</text>
-        <text x="{int(value_x)}" y="140" transform="scale(.1)" fill="#fff" textLength="{value_width*10 - 100}">{value_text}</text>
+        <text x="{int(value_x)}" y="140" transform="scale(.1)" fill="#fff" textLength="{value_width * 10 - 100}">{value_text}</text>
     </g>
 </svg>"""
 
