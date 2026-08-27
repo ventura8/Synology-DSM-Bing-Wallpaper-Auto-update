@@ -2,7 +2,7 @@
 
 This project provides an automated solution for updating the Synology DSM 7.2 login screen wallpaper with the Bing Daily Image.
 
-**Current release:** [v1.0.2](releases/v1.0.2.md)
+**Current release:** [v1.0.3](releases/v1.0.3.md)
 
 ## Core Logic
 

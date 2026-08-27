@@ -10,13 +10,23 @@ Thumbs.db
 *.jpeg
 *.png
 
-# --- Temporary/Logs ---
+# --- Temporary / Logs / Agent Work ---
 *.log
 /tmp/
+reports/
+
+# --- Coverage & CI Artifacts ---
 coverage/
 coverage_inputs/
 coverage_final/
+raw_coverage/
+raw_coverage_*/
+html_report/
 local_summary.md
+code-coverage-results.md
+cobertura.xml
+badge.svg
+SHA256SUMS
 
 # --- Python / Quality Tooling Caches ---
 .venv/
@@ -28,5 +38,6 @@ __pycache__/
 .pytest_cache/
 .pre-commit-cache/
 
-# Un-ignore assets for documentation screenshots
+# Un-ignore assets for documentation screenshots and coverage badge
 !assets/*.png
+!assets/*.svg

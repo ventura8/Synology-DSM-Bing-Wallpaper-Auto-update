@@ -53,4 +53,5 @@ contract from `AGENTS.md`.
    - All lanes pass.
    - Coverage ≥ 90%.
    - Badge committed when coverage was regenerated.
-   - Update `AGENTS.md` / this skill if test commands or thresholds change.
+   - All relevant markdown updated in the same change set — see root `AGENTS.md`
+     § Always Update Relevant Markdown

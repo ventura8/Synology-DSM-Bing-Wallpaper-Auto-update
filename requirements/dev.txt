@@ -1,5 +1,6 @@
-pip==26.1.2
-pre-commit==4.0.1
-ruff==0.6.9
-mypy==1.11.2
-yamllint==1.35.1
+# Minimum Python: 3.10 (see also docs/development_standards.md and pyproject.toml Ruff/Mypy targets)
+pip==26.2.1
+pre-commit==4.6.2
+ruff==0.16.4
+mypy==2.3.1
+yamllint==1.38.0

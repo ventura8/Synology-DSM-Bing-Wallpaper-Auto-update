@@ -7,16 +7,17 @@ Guidance for AI agents and developers working on this project.
 - [AGENTS.md](../AGENTS.md) — project constitution (gates, mocking, coverage, DSM invariants)
 - [.agents/skills/](../.agents/skills/) — invokable workflow playbooks:
   - `code-linter`, `test-runner`, `pipeline-runner`
-  - `ci-maintainer`, `release-hygiene`
+  - `ci-maintainer`, `release`, `release-hygiene`
   - `resolve-pr-comments`, `review-with-coderabbit`
 
-Thin mirrors (`.agent/instructions.md`, `.instructions.md`,
-`.github/copilot-instructions.md`, `.agent/prompt.md`, `.prompt.md`) point at
-`AGENTS.md` and must not fork rules.
+Thin mirrors (`CLAUDE.md`, `GEMINI.md`, `.agent/instructions.md`,
+`.instructions.md`, `.github/copilot-instructions.md`, `.agent/prompt.md`,
+`.prompt.md`) point at `AGENTS.md` and must not fork rules.
 
 ## Human documentation index
 
 - [Project Overview & Logic](project_overview.md)
 - [Configuration](configuration.md)
 - [Development & Standards](development_standards.md)
-- [Release notes](releases/v1.0.2.md) (prior: [v1.0.1](releases/v1.0.1.md))
+- [Release notes](releases/v1.0.3.md) (prior: [v1.0.2](releases/v1.0.2.md),
+  [v1.0.1](releases/v1.0.1.md))

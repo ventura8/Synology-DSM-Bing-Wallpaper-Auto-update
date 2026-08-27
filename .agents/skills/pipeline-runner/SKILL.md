@@ -51,4 +51,5 @@ or opening a PR — same spirit as CI without waiting for GitHub Actions.
    - Quality exit 0
    - Unit, component, and e2e green under DSM mock
    - Threshold and badge satisfied
-   - Agent docs updated if pipeline commands changed
+   - All relevant markdown updated in the same change set — see root `AGENTS.md`
+     § Always Update Relevant Markdown

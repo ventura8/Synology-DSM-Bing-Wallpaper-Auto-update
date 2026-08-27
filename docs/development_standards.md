@@ -2,12 +2,18 @@
 
 This document outlines the coding standards, environment management, and testing requirements for the project.
 
-**Current release:** [v1.0.2](releases/v1.0.2.md)
+**Current release:** [v1.0.3](releases/v1.0.3.md)
 
 ## Environment & Dependency Management
 
 - **Local Development**: The project uses Docker to simulate a Synology DSM environment for testing.
-- **Tools**: Ensure `docker`, `PowerShell`, `python`, and `pre-commit` are installed for local validation and test runs.
+- **Tools**: Ensure `docker`, PowerShell **7.4.14+**, Python **3.10+**, and `pre-commit`
+  are installed for local validation and test runs.
+- **Python**: Minimum development version is **3.10** (documented next to
+  `requirements/dev.txt`; Ruff/Mypy target `py310` / `python_version = "3.10"`).
+  CI quality uses 3.12; the supported range is 3.10–3.12.
+- **PowerShell**: Minimum for lint/orchestration scripts is **7.4.14** (`pwsh`);
+  `scripts/lint/lint_powershell.ps1` enforces this and pins PSScriptAnalyzer **1.25.0**.
 
 ## Coding Standards
 

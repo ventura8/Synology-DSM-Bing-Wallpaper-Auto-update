@@ -8,6 +8,7 @@ description: >-
 # CI Maintainer Skill
 
 Use this skill when changing [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml),
+[`.github/workflows/release.yml`](../../../.github/workflows/release.yml),
 action versions, or Docker DSM mock dependencies used by CI.
 
 ## Policy
@@ -24,6 +25,13 @@ action versions, or Docker DSM mock dependencies used by CI.
    `scripts/coverage_checks/check_coverage_threshold.py`.
 1. **Reproducible mock**: Keep `tests/Dockerfile.dsm_mock` and related test
    helpers deterministic; document breaking image changes in agent docs.
+1. **Least privilege**: Default workflow `permissions` to read-only (`contents:
+   read`). Do not grant `actions: write` for artifact upload/download or GHA
+   Docker cache — those use runner-provided tokens. Grant `pull-requests: write`
+   only to jobs that comment on PRs, and `contents: write` only to jobs that
+   publish releases. Release tags must pass a read-only validation job (on
+   `main` + green CI Pipeline, waiting/polling if CI is still running) before
+   publish.
 
 ## Validation
 
@@ -45,5 +53,5 @@ action versions, or Docker DSM mock dependencies used by CI.
 
    - Workflow syntax clean
    - Pins are stable finals
-   - Coverage gate and badge rules unchanged unless intentionally revised in
-     `AGENTS.md` + skills in the same change set
+   - All relevant markdown updated in the same change set — see root `AGENTS.md`
+     § Always Update Relevant Markdown

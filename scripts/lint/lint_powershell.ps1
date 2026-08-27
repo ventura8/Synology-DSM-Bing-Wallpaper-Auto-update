@@ -1,5 +1,10 @@
 $ErrorActionPreference = "Stop"
-$requiredVersion = "1.24.0"
+$minPwshVersion = [version]"7.4.14"
+if ($PSVersionTable.PSVersion -lt $minPwshVersion) {
+    throw "PowerShell $minPwshVersion or newer is required (found $($PSVersionTable.PSVersion))."
+}
+
+$requiredVersion = "1.25.0"
 
 $installedModule = Get-Module -ListAvailable -Name PSScriptAnalyzer |
     Where-Object { $_.Version -eq [version]$requiredVersion } |
