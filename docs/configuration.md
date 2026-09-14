@@ -20,6 +20,16 @@ You can configure the wallpaper script by modifying the variables at the top of 
 - HTTPS downloads keep TLS certificate verification enabled.
 - Downloaded content must look like a JPEG before system wallpaper paths are updated.
 - Archive filenames use a validated eight-digit Bing date (`YYYYMMDD`).
+- The archive destination must not be a symlink or other non-regular file; the script fails closed
+  instead of writing through it. The file is staged in a private directory at `SAVE_PATH`'s volume
+  root (`/volumeN` on DSM — outside any shared folder, so share permissions and ACL inheritance
+  cannot reach it) and hard-linked into place; `link(2)` never follows a symlink at the destination.
+  The mount point must be a volume root (`/volumeN`) that is root-owned and not group/other-writable,
+  or archiving fails with an error. **Encrypted shared folders and USB/eSATA shares are their own
+  mounts and are therefore not supported for `SAVE_PATH`** — SynoACL grants share writers access to
+  such a mount regardless of its POSIX mode, so it cannot be used as a private staging area. As the
+  script runs as root and `SAVE_PATH` is often a shared folder, prefer a `SAVE_PATH` that only
+  administrators can write to.
 - Title/copyright values are sanitized before writing `/etc/synoinfo.conf`.
 
 ## Supported Region Codes

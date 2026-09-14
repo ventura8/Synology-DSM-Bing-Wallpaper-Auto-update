@@ -1,7 +1,7 @@
 # **🖼️ Synology DSM 7.2 Bing Daily Wallpaper Script (4K)**
 
 [![Script](https://img.shields.io/badge/Script-Shell-blue.svg)](https://github.com/ventura8/Synology-DSM-Bing-Wallpaper-Auto-update)
-[![Release](https://img.shields.io/badge/release-v1.0.3-blue.svg)](docs/releases/v1.0.3.md)
+[![Release](https://img.shields.io/badge/release-v1.0.4-blue.svg)](docs/releases/v1.0.4.md)
 ![Coverage](assets/coverage.svg)
 
 This bash script automates the process of fetching the daily Bing wallpaper in **4K (UHD)** resolution and applying it to your Synology DSM 7.2 Login Screen. It intelligently extracts metadata to update the login screen's **Welcome Title** and **Message** with the image description and copyright credit.
@@ -25,7 +25,12 @@ This bash script automates the process of fetching the daily Bing wallpaper in *
 * **🗄️ Detailed Archiving:** Optional archiving saves files with full metadata in the filename:
   * Format: `YYYYMMDD - Image Title - Photographer Credit.jpg`
   * Example: `20231027 - Tufted titmouse - Tim Laman.jpg`
-  * Archive dates are validated and paths are kept under `SAVE_PATH`.
+  * Archive dates are validated, the filename is sanitized to `[A-Za-z0-9 .-]`, canonical containment
+    under `SAVE_PATH` is checked when `realpath` is available, and a symlink planted at the
+    archive filename is refused. The file is staged outside the share (at the volume root, e.g.
+    `/volume1`) and hard-linked into place, which never follows a symlink at the destination.
+    `SAVE_PATH` must be on an internal volume: encrypted shares and USB shares are their own mounts
+    and are refused for archiving. Point `SAVE_PATH` at an admin-only folder for the strongest guarantee.
 
 ## **📋 Prerequisites**
 
@@ -124,7 +129,7 @@ To have the wallpaper update automatically every day:
    * Copies the image to `/usr/syno/etc/login_background.jpg`.
 5. **DSM 7 Override:**
    * Overwrites the default resource file at `/usr/syno/synoman/webman/resources/images/2x/default_wallpaper/dsm7_01.jpg`.
-6. **Archive (optional):** When enabled, validates the Bing date (`YYYYMMDD`) and saves under `SAVE_PATH` only.
+6. **Archive (optional):** When enabled, validates the Bing date (`YYYYMMDD`), saves under `SAVE_PATH` (canonical containment checked when `realpath` is available), refuses a symlink or non-regular file at the destination, stages outside the share, and hard-links into place so the root write never follows a symlink.
 
 ## **🛠️ Troubleshooting**
 

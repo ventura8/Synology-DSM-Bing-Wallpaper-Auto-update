@@ -69,7 +69,7 @@ backgrounds, and updates the login welcome title and message from Bing metadata.
 | Lane | How it runs | Role |
 | --- | --- | --- |
 | Unit | `run_kcov_cases.sh unit` in DSM mock | Narrow script/path coverage |
-| Component | `run_kcov_cases.sh component` | Integrated pieces against mock FS |
+| Component | `run_kcov_cases.sh component` | Integrated pieces against mock FS; also `archive_write_cases.sh` (sourced helpers, fail-closed branches) |
 | E2E | `run_kcov_cases.sh e2e` | Full apply path; verified by `tests/verify_dsm_mock.sh` |
 
 Local orchestration (builds image, runs lanes, merges coverage, updates badge):
@@ -168,10 +168,24 @@ are incomplete work (same as missing tests or a stale badge).
 - **Archive mode**: When `ENABLE_ARCHIVE=true`, require non-empty `SAVE_PATH`,
   `mkdir -p` before write; validate API date as eight digits (`SAFE_DATE`);
   filename pattern uses `SAFE_DATE` + sanitized title + credit; keep the resolved
-  path under `SAVE_PATH` (`realpath` when available).
+  path under `SAVE_PATH` (`realpath` when available); refuse a symlink or
+  non-regular file at the destination (`reject_archive_symlink`); never stage
+  inside the share — stage in a private `mktemp -d` directory at `SAVE_PATH`'s
+  mount point (`archive_staging_root`: same filesystem; accepted only when the
+  mount point is a volume root by shape — `/` or `/volumeN` — and owned by us
+  with no group/other write bit, because POSIX mode cannot tell a SynoACL
+  share-as-mount such as an encrypted or USB share from a volume root) so
+  share permissions and ACL inheritance are irrelevant; place with `ln -n` (`place_archive_file`:
+  `link(2)` never follows a destination symlink and fails if anything exists)
+  and confirm the result is our regular file. Residual: a real directory
+  swapped in at the destination receives the link inside the share and is
+  detected (run fails), not prevented.
 - **Safety**: Check existence / create dirs before overwrite; log significant steps;
   validate JPEG SOI (`FF D8 FF`) before system writes; fail closed on missing
-  archive path, failed download, non-JPEG payload, or invalid archive date.
+  archive path, failed download, non-JPEG payload, invalid archive date, a
+  symlink / non-regular file at the archive destination, or a `SAVE_PATH`
+  whose mount point is not a root-only volume root (encrypted shares and USB
+  shares are their own mounts and are refused for archiving).
 - **Shell portability**: Stay compatible with BusyBox-style `ash`/`bash` common on
   Synology; prefer portable constructs validated by ShellCheck and the mock image.
 - **wget / TLS**: Product download path uses `wget` (present on DSM) with TLS

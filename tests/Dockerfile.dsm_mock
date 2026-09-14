@@ -1,3 +1,7 @@
+# Pinned on purpose: on ubuntu:26.04 (bash 5.3) kcov v43 stops attributing
+# lines executed inside $(...) / ( ... ) subshells, which drops reported
+# coverage below the 90% gate with no change in what the tests exercise.
+# Re-evaluate when a kcov release fixes bash 5.3 subshell tracing.
 FROM ubuntu:24.04
 
 # Install dependencies required by the script
@@ -57,6 +61,7 @@ WORKDIR /app
 COPY bing_wallpaper_auto_update.sh /app/
 COPY tests/verify_dsm_mock.sh /app/
 COPY tests/run_kcov_cases.sh /app/
+COPY tests/archive_write_cases.sh /app/
 
 # Copy the mock wget
 COPY tests/mocks/wget /usr/bin/wget
@@ -65,8 +70,10 @@ COPY tests/mocks/wget /usr/bin/wget
 RUN chmod +x /app/bing_wallpaper_auto_update.sh \
     && chmod +x /app/verify_dsm_mock.sh \
     && chmod +x /app/run_kcov_cases.sh \
+    && chmod +x /app/archive_write_cases.sh \
     && chmod +x /usr/bin/wget \
     && dos2unix /app/bing_wallpaper_auto_update.sh \
     && dos2unix /app/verify_dsm_mock.sh \
+    && dos2unix /app/archive_write_cases.sh \
     && dos2unix /app/run_kcov_cases.sh \
     && dos2unix /usr/bin/wget
