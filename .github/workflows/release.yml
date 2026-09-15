@@ -124,7 +124,7 @@ jobs:
           sha256sum bing_wallpaper_auto_update.sh > SHA256SUMS
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3.0.2
+        uses: softprops/action-gh-release@v3.0.3
         with:
           tag_name: ${{ needs.validate.outputs.tag }}
           name: ${{ needs.validate.outputs.tag }}

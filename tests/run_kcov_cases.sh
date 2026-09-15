@@ -79,6 +79,51 @@ run_expected_failure_case() {
   fi
 }
 
+run_archive_symlink_case() {
+  # A share writer plants a symlink at the predictable archive name; the root
+  # run must refuse and leave the symlink target untouched.
+  local label="archive_symlink_destination"
+  local target="/tmp/symlink_target.conf"
+  local planted="/volume1/web/wallpapers/20230102 - Mock Title -  Mock Credit.jpg"
+
+  export BING_RESOLUTION="4k"
+  export ENABLE_ARCHIVE="true"
+  export CHECK_ARCHIVE="false"
+  unset MOCK_WGET_MODE
+
+  echo "sentinel" >"$target"
+  ln -s "$target" "$planted"
+
+  if kcov --include-pattern=bing_wallpaper_auto_update.sh "$COVERAGE_DIR/$label" ./bing_wallpaper_auto_update.sh; then
+    echo "Expected failure case '$label' unexpectedly succeeded."
+    exit 1
+  fi
+
+  if [ "$(cat "$target")" != "sentinel" ]; then
+    echo "[FAIL] Symlink target was overwritten through the archive path."
+    exit 1
+  fi
+  if [ ! -L "$planted" ]; then
+    echo "[FAIL] Planted symlink was replaced instead of refused."
+    exit 1
+  fi
+  if ls -d "$(df -P /volume1/web/wallpapers | awk 'NR == 2 { print $6 }')"/@bing_archive.* >/dev/null 2>&1; then
+    echo "[FAIL] Archive staging directory left behind."
+    exit 1
+  fi
+  echo "[PASS] Symlink archive destination refused; target untouched."
+  rm -f "$target"
+}
+
+run_archive_write_cases() {
+  # Exercise write_archive_file / verify_archive_destination failure branches
+  # directly; the end-to-end mock cannot make cp, mktemp, or mv fail.
+  export ENABLE_ARCHIVE="false"
+  export CHECK_ARCHIVE="false"
+  unset MOCK_WGET_MODE
+  kcov --include-pattern=bing_wallpaper_auto_update.sh "$COVERAGE_DIR/archive_write_cases" ./archive_write_cases.sh
+}
+
 case "$MODE" in
   unit)
     run_success_case "happy_path" "4k" "false" "false"
@@ -95,6 +140,9 @@ case "$MODE" in
     reset_mock_state
     run_expected_failure_case "traversal_date" "traversal_date" "true"
     assert_mock_state_clean
+    run_archive_symlink_case
+    reset_mock_state
+    run_archive_write_cases
     ;;
   e2e)
     run_success_case "fallback_1080p" "1080p" "false" "false"

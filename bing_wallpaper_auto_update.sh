@@ -2,7 +2,7 @@
 
 # ==============================================================================
 # Synology DSM 7.2 Bing Daily Wallpaper Script (4K/UHD)
-# Version: 1.0.2
+# Version: 1.0.4
 #
 # Description:
 # This script downloads the daily Bing wallpaper and updates the DSM login screen.
@@ -134,6 +134,77 @@ ensure_archive_within_save_path() {
   esac
 }
 
+reject_archive_symlink() {
+  # cp/chmod follow a symlink at the destination, so a pre-planted link in a
+  # writable share would redirect the root write anywhere. Refuse it outright.
+  if [ -L "$ARCHIVE_FILE" ]; then
+    echo "Error: Archive destination is a symlink; refusing to write."
+    exit 1
+  fi
+  if [ -e "$ARCHIVE_FILE" ] && [ ! -f "$ARCHIVE_FILE" ]; then
+    echo "Error: Archive destination exists and is not a regular file."
+    exit 1
+  fi
+}
+
+archive_staging_root() {
+  # Stage on the same filesystem as SAVE_PATH but outside the share: the
+  # mount point (/volumeN on DSM) is root-owned and carries no share ACL, so
+  # nothing a share writer does can touch the staged file. POSIX mode cannot
+  # tell a share from a volume root (an unlocked encrypted share is its own
+  # ecryptfs mount, a USB share is often the device mount, and SynoACL grants
+  # writers regardless of a root-owned 755), so only accept a volume root by
+  # shape, and even then require that nobody else can write to it.
+  local root owner_mode
+  root=$(df -P "$SAVE_PATH" 2>/dev/null | awk 'NR == 2 { print $6 }')
+  case "$root" in
+    / | /volume[0-9] | /volume[0-9][0-9]) ;;
+    *) return 1 ;;
+  esac
+  owner_mode=$(stat -c '%u %a' "$root" 2>/dev/null) || return 1
+  # Owned by us, and neither group nor other has the write bit (digits 0/1/4/5).
+  case "$owner_mode" in
+    "$(id -u) "*[0145][0145]) printf '%s' "$root" ;;
+    *) return 1 ;;
+  esac
+}
+
+write_archive_file() {
+  local stage_root stage_dir staged
+  if ! stage_root=$(archive_staging_root) ||
+    ! stage_dir=$(mktemp -d "$stage_root/@bing_archive.XXXXXX"); then
+    echo "Error: Cannot stage the archive: SAVE_PATH must live on an internal volume (/volumeN)" \
+      "that only root can write to. Encrypted shares and USB shares are their own mounts and are not supported."
+    exit 1
+  fi
+  staged="$stage_dir/$(basename "$ARCHIVE_FILE")"
+  if ! cp -f "$TMP_FILE" "$staged" || ! chmod 644 "$staged"; then
+    rm -rf "$stage_dir"
+    echo "Error: Cannot write archive file."
+    exit 1
+  fi
+  place_archive_file "$staged" || {
+    rm -rf "$stage_dir"
+    exit 1
+  }
+  rm -rf "$stage_dir"
+}
+
+place_archive_file() {
+  # link(2) never follows a symlink at the destination and fails if anything
+  # exists there, so a destination swapped in after reject_archive_symlink
+  # cannot be written through; -n keeps ln from descending into a symlinked
+  # directory. A real directory swapped in would still receive the link, so
+  # confirm the destination is our regular file afterwards. rm -f first so a
+  # same-day re-run replaces the previous file.
+  local staged="$1"
+  rm -f "$ARCHIVE_FILE"
+  if ! ln -n "$staged" "$ARCHIVE_FILE" || [ -L "$ARCHIVE_FILE" ] || [ ! -f "$ARCHIVE_FILE" ]; then
+    echo "Error: Archive destination changed during write; refusing to continue."
+    return 1
+  fi
+}
+
 fetch_picture_info() {
   local api_url="$1"
 
@@ -229,8 +300,8 @@ archive_image() {
     # Format: Date - Title - Copyright.jpg.
     ARCHIVE_FILE="$SAVE_PATH/${SAFE_DATE} - ${SAFE_TITLE} - ${SAFE_COPYRIGHT}.jpg"
     ensure_archive_within_save_path
-    cp -f "$TMP_FILE" "$ARCHIVE_FILE"
-    chmod 644 "$ARCHIVE_FILE"
+    reject_archive_symlink
+    write_archive_file
     echo "Archived image to: $ARCHIVE_FILE"
     return
   fi

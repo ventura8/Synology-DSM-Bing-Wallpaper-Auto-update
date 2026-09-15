@@ -2,7 +2,7 @@
 
 This project provides an automated solution for updating the Synology DSM 7.2 login screen wallpaper with the Bing Daily Image.
 
-**Current release:** [v1.0.3](releases/v1.0.3.md)
+**Current release:** [v1.0.4](releases/v1.0.4.md)
 
 ## Core Logic
 
@@ -20,7 +20,7 @@ The script `bing_wallpaper_auto_update.sh` follows these steps:
     *   Updates `/etc/synoinfo.conf` for the login welcome title and message.
     *   Overwrites the default DSM wallpaper at `/usr/syno/synoman/webman/resources/images/2x/default_wallpaper/dsm7_01.jpg`.
     *   Updates `/usr/syno/etc/login_background.jpg`.
-7.  **Archiving (Optional)**: If enabled, validates Bing `enddate` as `YYYYMMDD`, then saves under `SAVE_PATH` only (path containment when `realpath` is available).
+7.  **Archiving (Optional)**: If enabled, validates Bing `enddate` as `YYYYMMDD`, then saves under `SAVE_PATH` only (path containment when `realpath` is available). A symlink or non-regular file at the destination is refused; the copy is staged in a private directory at `SAVE_PATH`'s volume root (`/volumeN`; outside the share, same filesystem — encrypted and USB shares are their own mounts and are refused) and hard-linked into place with `ln -n` after removing any previous regular file (so same-day re-runs replace it). `link(2)` never follows a destination symlink, so a symlink swapped in after validation is refused rather than followed; a real directory swapped in receives the link inside it, and the post-placement regular-file check then rejects the destination and fails the run.
 
 ## Testing Strategy
 

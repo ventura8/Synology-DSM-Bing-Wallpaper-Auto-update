@@ -63,12 +63,20 @@ if [ "$CHECK_ARCHIVE" == "true" ]; then
 
   EXPECTED_ARCHIVE="/volume1/web/wallpapers/20230102 - Mock Title -  Mock Credit.jpg"
 
-  if [ -f "$EXPECTED_ARCHIVE" ]; then
+  if [ -f "$EXPECTED_ARCHIVE" ] && [ ! -L "$EXPECTED_ARCHIVE" ]; then
     echo "[PASS] Archive file created: $EXPECTED_ARCHIVE"
   else
     echo "[FAIL] Archive file missing: $EXPECTED_ARCHIVE"
     ls -l /volume1/web/wallpapers/
     HAS_ERRORS=1
+  fi
+
+  if ls -d "$(df -P /volume1/web/wallpapers | awk 'NR == 2 { print $6 }')"/@bing_archive.* >/dev/null 2>&1; then
+    echo "[FAIL] Archive staging directory left behind."
+    ls -la /volume1/web/wallpapers/
+    HAS_ERRORS=1
+  else
+    echo "[PASS] No archive staging directory left behind."
   fi
 fi
 

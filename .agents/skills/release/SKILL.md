@@ -44,8 +44,9 @@ The release notes file must be committed **before** the tag is pushed.
 
 1. **Update the human docs in the same change set**:
 
-   - [`docs/project_overview.md`](../../../docs/project_overview.md) — bump the
-     "Current release" link.
+   - [`docs/project_overview.md`](../../../docs/project_overview.md) and
+     [`docs/development_standards.md`](../../../docs/development_standards.md)
+     — bump the "Current release" link in both.
    - [`docs/ai_instructions.md`](../../../docs/ai_instructions.md) — bump the
      release-notes link under "Human documentation index".
    - `README.md` if it references the current version or changelog.
@@ -86,8 +87,8 @@ The release notes file must be committed **before** the tag is pushed.
 
    - `docs/releases/vX.Y.Z.md` exists, is committed on the tagged commit, and
      matches the actual diff (no promised checks the repo doesn't run).
-   - `docs/project_overview.md` and `docs/ai_instructions.md` point at the new
-     release doc.
+   - `docs/project_overview.md`, `docs/development_standards.md`, and
+     `docs/ai_instructions.md` point at the new release doc.
    - All other relevant markdown updated in the same change set — see root
      `AGENTS.md` § Always Update Relevant Markdown.
    - Tag pushed only after explicit user confirmation.

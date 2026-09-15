@@ -2,7 +2,7 @@
 
 This document outlines the coding standards, environment management, and testing requirements for the project.
 
-**Current release:** [v1.0.3](releases/v1.0.3.md)
+**Current release:** [v1.0.4](releases/v1.0.4.md)
 
 ## Environment & Dependency Management
 
