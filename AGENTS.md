@@ -135,8 +135,9 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
 
 - Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on push/PR to
   `main` / `master`.
-- Order: **quality** → parallel **sonarqube / unit / component / e2e** → **coverage-report**
-  (merge, transform, sticky PR comment, hard 90% gate).
+- Order: **quality** → parallel **unit / component / e2e** → **coverage-report**
+  (merge, transform, sticky PR comment, hard 90% gate) → **sonarqube**, which runs last
+  because it consumes the merged `cobertura.xml` that `coverage-report` publishes.
 - The **sonarqube** job scans with `SonarSource/sonarqube-scan-action` and then blocks on
   `sonarqube-quality-gate-action`; it checks out with `fetch-depth: 0` so Sonar can attribute
   new code correctly. It is gated on the `SONAR_ENABLED` repository **variable** being `"true"`

@@ -119,25 +119,34 @@ kcov --merge coverage/merged $DIRS
 
 $mergeScript | Out-File -FilePath "$coverageBase/merge_all.sh" -Encoding ascii
 
-# kcov runs as root in the container, so everything it writes to the bind mount is
-# root-owned. Hand it back to the invoking user, or the host-side transform and badge
-# steps below cannot rewrite the merged report. Docker Desktop maps ownership already,
-# so this is only needed where the daemon shares the host's user namespace.
-$reclaimOwnership = ""
-if ($IsLinux -or $IsMacOS) {
-    $hostUid = (& id -u).Trim()
-    $hostGid = (& id -g).Trim()
-    $reclaimOwnership = " && chown -R ${hostUid}:${hostGid} coverage"
-}
-
 docker run --rm `
     --security-opt seccomp=unconfined `
     --cap-add SYS_PTRACE `
     -v "${PWD}:/workdir" `
     -w /workdir `
-    $dsmImage bash -c "dos2unix coverage/merge_all.sh && chmod +x coverage/merge_all.sh && ./coverage/merge_all.sh$reclaimOwnership"
+    $dsmImage bash -c "dos2unix coverage/merge_all.sh && chmod +x coverage/merge_all.sh && ./coverage/merge_all.sh"
 if ($LASTEXITCODE -ne 0) {
     throw "Coverage merge failed."
+}
+
+# Under a root-daemon Docker, kcov's output is owned by root and the host-side transform
+# and badge steps below cannot rewrite it. Under rootless Docker or Docker Desktop the
+# container's root is already the invoking user, and chowning to our own uid from inside
+# the container would resolve to a subordinate uid and lock us out of our own files.
+# So only reclaim when the merged report really is owned by somebody else.
+if ($IsLinux -or $IsMacOS) {
+    $mergedXml = Join-Path $coverageBase "merged/kcov-merged/cobertura.xml"
+    if (Test-Path $mergedXml) {
+        $hostUid = (& id -u).Trim()
+        $hostGid = (& id -g).Trim()
+        $ownerUid = (& stat -c '%u' $mergedXml).Trim()
+        if ($ownerUid -ne $hostUid) {
+            Write-Host "Reclaiming ownership of coverage output from uid $ownerUid..." -ForegroundColor Cyan
+            docker run --rm -v "${PWD}:/workdir" -w /workdir `
+                $dsmImage bash -c "chown -R ${hostUid}:${hostGid} coverage"
+            if ($LASTEXITCODE -ne 0) { throw "Could not reclaim ownership of the coverage directory." }
+        }
+    }
 }
 
 # 4. Check for report

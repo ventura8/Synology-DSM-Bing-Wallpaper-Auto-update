@@ -30,9 +30,11 @@ action versions, or Docker DSM mock dependencies used by CI.
 1. **Local ↔ CI parity**: CI quality must run the same mandatory checks as
    `./scripts/quality/quality_check.sh`. Do not add ignores that make CI greener
    than local.
-1. **Pipeline shape**: Preserve `quality` → parallel `sonarqube` / `unit` /
-   `component` / `e2e` → `coverage-report` with hard **90%** enforcement via
-   `scripts/coverage_checks/check_coverage_threshold.py`.
+1. **Pipeline shape**: Preserve `quality` → parallel `unit` / `component` /
+   `e2e` → `coverage-report` → `sonarqube`. `coverage-report` enforces the hard
+   **90%** threshold via `scripts/coverage_checks/check_coverage_threshold.py`
+   and publishes the merged `cobertura.xml`; `sonarqube` runs last because it
+   consumes that artifact.
 1. **Hash-pinned dependencies**: CI installs from `requirements/dev.lock`
    (`--require-hashes --only-binary :all:`). When bumping anything in
    `requirements/dev.txt`, regenerate the lock with `pip-compile
