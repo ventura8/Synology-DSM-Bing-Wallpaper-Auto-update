@@ -42,6 +42,11 @@ backgrounds, and updates the login welcome title and message from Bing metadata.
   SONAR_TOKEN=... ./scripts/quality/sonar_scan.sh
   ```
 
+  **Analysis mode is Automatic Analysis**, which scans every push to `main` and every pull
+  request with no secret and no CI job. It owns the project and rejects any externally
+  submitted scan, so `sonar_scan.sh` and the `sonarqube` CI job **cannot run while it is on** —
+  both are kept for a future switch to CI-based analysis and are off by default
+  (`SONAR_ENABLED=false`). Do not enable one without turning the other off.
   The script runs the pinned `sonar-scanner-cli` Docker image against the current branch, so no
   scanner install is needed. Sonar analyses Bash, Python, PowerShell, Dockerfile, and workflow
   YAML, so it overlaps ShellCheck on the product script and adds rules ShellCheck has no view of

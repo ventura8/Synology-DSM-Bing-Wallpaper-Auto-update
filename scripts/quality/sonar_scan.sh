@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Run a SonarQube Cloud analysis locally, using the same sonar-project.properties as CI.
 # Requires SONAR_TOKEN in the environment (a SonarQube Cloud user token) and Docker.
+#
+# NOTE: this project runs SonarQube Cloud Automatic Analysis, which owns the project and
+# rejects every scan submitted from outside it - including this one. The script is kept for
+# the day the project switches to CI-based analysis; until then it will fail by design.
+# Switching modes means turning Automatic Analysis off in the project's settings.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
