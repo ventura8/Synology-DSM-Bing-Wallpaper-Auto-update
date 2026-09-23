@@ -7,14 +7,19 @@ Write-Host "Running mandatory quality checks before tests..." -ForegroundColor C
 & "$PSScriptRoot/../quality/quality_check.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Quality checks failed." }
 
-# Clean previous runs
-if (Test-Path $coverageBase) { Remove-Item -Recurse -Force $coverageBase }
-New-Item -ItemType Directory -Path $coverageBase | Out-Null
-
 # 1. Build the Docker image
 Write-Host "Building Docker image..." -ForegroundColor Cyan
 docker build -t $dsmImage -f tests/Dockerfile.dsm_mock .
 if ($LASTEXITCODE -ne 0) { Write-Error "Docker build failed."; exit 1 }
+
+# Clean previous runs. kcov writes its output as root inside the container, so anything
+# left by an earlier run is not removable by the invoking user - delete it as root instead.
+if (Test-Path $coverageBase) {
+    Write-Host "Removing previous coverage output..." -ForegroundColor Cyan
+    docker run --rm -v "${PWD}:/workdir" -w /workdir $dsmImage bash -c "rm -rf coverage"
+    if ($LASTEXITCODE -ne 0) { throw "Could not remove the previous coverage directory." }
+}
+New-Item -ItemType Directory -Path $coverageBase | Out-Null
 
 # 2. Run Tests in Parallel using PowerShell Jobs
 Write-Host "Starting Parallel Test Runs (Unit, Component, E2E)..." -ForegroundColor Cyan
@@ -37,13 +42,16 @@ $testTasks = @(
     }
 )
 
+$logDir = Join-Path $PWD "reports/agent-logs"
+New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+
 $jobs = @()
 foreach ($task in $testTasks) {
     New-Item -ItemType Directory -Path (Join-Path $coverageBase $task.Name.ToLower()) -Force | Out-Null
     Write-Host "Launching $($task.Name) tests..." -ForegroundColor Green
+    $logPath = Join-Path $logDir "$($task.CoverageMode).log"
     $jobs += Start-Job -ScriptBlock {
-        param($taskConfig, $name, $basePath, $image)
-        Write-Host "Running $name Job..."
+        param($taskConfig, $name, $basePath, $image, $logPath)
         $coverageMount = "${basePath}/$($taskConfig.CoverageSubdir):/app/coverage"
         $bashCommand = "./run_kcov_cases.sh '$($taskConfig.CoverageMode)' /app/coverage"
         $dockerArgs = @(
@@ -60,15 +68,21 @@ foreach ($task in $testTasks) {
             "-c",
             $bashCommand
         )
-        & docker @dockerArgs
+        & docker @dockerArgs *> $logPath
         if ($LASTEXITCODE -ne 0) {
-            throw "$name job failed with exit code $LASTEXITCODE"
+            throw "$name job failed with exit code $LASTEXITCODE. See $logPath"
         }
-    } -ArgumentList $task, $task.Name, $coverageBase, $dsmImage
+    } -ArgumentList $task, $task.Name, $coverageBase, $dsmImage, $logPath
 }
 
 Write-Host "Waiting for tests to complete..." -ForegroundColor Yellow
 Wait-Job $jobs | Out-Null
+
+foreach ($task in $testTasks) {
+    $logPath = Join-Path $logDir "$($task.CoverageMode).log"
+    Write-Host "--- $($task.Name) output ---" -ForegroundColor Cyan
+    if (Test-Path $logPath) { Get-Content $logPath | Write-Host }
+}
 
 # Check for failure
 $jobErrors = @()
@@ -105,12 +119,23 @@ kcov --merge coverage/merged $DIRS
 
 $mergeScript | Out-File -FilePath "$coverageBase/merge_all.sh" -Encoding ascii
 
+# kcov runs as root in the container, so everything it writes to the bind mount is
+# root-owned. Hand it back to the invoking user, or the host-side transform and badge
+# steps below cannot rewrite the merged report. Docker Desktop maps ownership already,
+# so this is only needed where the daemon shares the host's user namespace.
+$reclaimOwnership = ""
+if ($IsLinux -or $IsMacOS) {
+    $hostUid = (& id -u).Trim()
+    $hostGid = (& id -g).Trim()
+    $reclaimOwnership = " && chown -R ${hostUid}:${hostGid} coverage"
+}
+
 docker run --rm `
     --security-opt seccomp=unconfined `
     --cap-add SYS_PTRACE `
     -v "${PWD}:/workdir" `
     -w /workdir `
-    $dsmImage bash -c "dos2unix coverage/merge_all.sh && chmod +x coverage/merge_all.sh && ./coverage/merge_all.sh"
+    $dsmImage bash -c "dos2unix coverage/merge_all.sh && chmod +x coverage/merge_all.sh && ./coverage/merge_all.sh$reclaimOwnership"
 if ($LASTEXITCODE -ne 0) {
     throw "Coverage merge failed."
 }

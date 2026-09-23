@@ -107,6 +107,14 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
 ./scripts/testing/run_tests_local.ps1
 ```
 
+- Each lane's output goes straight to `reports/agent-logs/<lane>.log` and is replayed once
+  the jobs finish. Do not let a lane write to the `Start-Job` pipe instead: nothing drains
+  that buffer until `Receive-Job`, which runs after `Wait-Job`, so a chatty lane fills it,
+  `docker` blocks on write, the traced script stops, and kcov spins at 100% CPU forever.
+- kcov writes as **root**, so the script deletes the previous `coverage/` from inside a
+  container and chowns the merged report back to the invoking user. Host-side `rm` and the
+  transform/badge steps both fail on root-owned leftovers otherwise.
+
 - Coverage is gathered with **kcov** on the product shell script.
 - HTML reports land under `coverage/` on local runs.
 - CI runs the same three lanes in parallel after the quality job, then merges in
