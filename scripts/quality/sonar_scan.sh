@@ -8,7 +8,7 @@ cd "${ROOT_DIR}"
 
 SCANNER_IMAGE="${SONAR_SCANNER_IMAGE:-sonarsource/sonar-scanner-cli:12.2.0.4256_8.1.0}"
 
-if [ -z "${SONAR_TOKEN:-}" ]; then
+if [[ -z "${SONAR_TOKEN:-}" ]]; then
   echo "SONAR_TOKEN is not set. Create a user token at https://sonarcloud.io/account/security and export it." >&2
   exit 1
 fi
