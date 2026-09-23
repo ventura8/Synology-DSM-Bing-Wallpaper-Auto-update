@@ -33,6 +33,11 @@ action versions, or Docker DSM mock dependencies used by CI.
 1. **Pipeline shape**: Preserve `quality` → parallel `sonarqube` / `unit` /
    `component` / `e2e` → `coverage-report` with hard **90%** enforcement via
    `scripts/coverage_checks/check_coverage_threshold.py`.
+1. **Hash-pinned dependencies**: CI installs from `requirements/dev.lock`
+   (`--require-hashes --only-binary :all:`). When bumping anything in
+   `requirements/dev.txt`, regenerate the lock with `pip-compile
+   --generate-hashes --allow-unsafe --strip-extras` under Python 3.12 and
+   commit both files together.
 1. **Reproducible mock**: Keep `tests/Dockerfile.dsm_mock` and related test
    helpers deterministic; document breaking image changes in agent docs.
 1. **Least privilege**: Default workflow `permissions` to read-only (`contents:

@@ -9,6 +9,11 @@ This document outlines the coding standards, environment management, and testing
 - **Local Development**: The project uses Docker to simulate a Synology DSM environment for testing.
 - **Tools**: Ensure `docker`, PowerShell **7.4.14+**, Python **3.10+**, and `pre-commit`
   are installed for local validation and test runs.
+- **Dependency locking**: `requirements/dev.txt` holds the direct dependencies you edit;
+  `requirements/dev.lock` is generated from it with `pip-compile --generate-hashes` and pins the
+  transitive tree by hash. CI installs from the lock with `--require-hashes --only-binary :all:`,
+  so a wheel that does not match its recorded hash fails the build. Regenerate the lock under
+  Python 3.12 whenever `dev.txt` changes and commit both files together.
 - **Python**: Minimum development version is **3.10** (documented next to
   `requirements/dev.txt`; Ruff/Mypy target `py310` / `python_version = "3.10"`).
   CI quality uses 3.12; the supported range is 3.10–3.12.

@@ -56,6 +56,13 @@ backgrounds, and updates the login welcome title and message from Bing metadata.
   reviewed as such in Sonar, not silenced in code: the DSM mock image must run as root, and
   `tests/archive_write_cases.sh` must `chmod 777` a fixture mount to prove that branch is refused.
 
+- **Dependencies**: [`requirements/dev.txt`](requirements/dev.txt) is the hand-edited input;
+  [`requirements/dev.lock`](requirements/dev.lock) is generated from it and pins every transitive
+  dependency with a hash. CI installs from the lock with `--require-hashes --only-binary :all:`.
+  Edit `dev.txt`, then regenerate the lock with `pip-compile --generate-hashes --allow-unsafe
+  --strip-extras --output-file requirements/dev.lock requirements/dev.txt` under **Python 3.12**
+  (the version CI uses), and commit both in the same change set. A lock that does not match its
+  input is a broken build, not a stale file.
 - **Required tooling**:
   - Shell: `shfmt`, ShellCheck
   - Python: Ruff, Mypy
