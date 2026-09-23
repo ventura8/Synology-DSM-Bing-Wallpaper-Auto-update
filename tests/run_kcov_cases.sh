@@ -33,7 +33,7 @@ assert_mock_state_clean() {
     has_errors=1
   fi
 
-  if [ -z "$(ls -A /volume1/web/wallpapers 2>/dev/null || true)" ]; then
+  if [[ -z "$(ls -A /volume1/web/wallpapers 2>/dev/null || true)" ]]; then
     echo "[PASS] Archive directory empty after expected failure."
   else
     echo "[FAIL] Archive files present after expected failure."
@@ -41,7 +41,7 @@ assert_mock_state_clean() {
     has_errors=1
   fi
 
-  if [ "$has_errors" -ne 0 ]; then
+  if [[ "$has_errors" -ne 0 ]]; then
     echo "=== Clean-state assertion FAILED ==="
     exit 1
   fi
@@ -99,11 +99,11 @@ run_archive_symlink_case() {
     exit 1
   fi
 
-  if [ "$(cat "$target")" != "sentinel" ]; then
+  if [[ "$(cat "$target")" != "sentinel" ]]; then
     echo "[FAIL] Symlink target was overwritten through the archive path."
     exit 1
   fi
-  if [ ! -L "$planted" ]; then
+  if [[ ! -L "$planted" ]]; then
     echo "[FAIL] Planted symlink was replaced instead of refused."
     exit 1
   fi

@@ -7,24 +7,24 @@ FROM ubuntu:24.04
 # Install dependencies required by the script
 # Consolidated apt-get to single layer for efficiency
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y \
-    wget \
-    file \
-    grep \
-    sed \
-    ca-certificates \
-    git \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    binutils-dev \
     build-essential \
+    ca-certificates \
     cmake \
+    dos2unix \
+    file \
+    git \
+    grep \
     libcurl4-openssl-dev \
     libdw-dev \
     libelf-dev \
-    binutils-dev \
     libiberty-dev \
-    zlib1g-dev \
-    python3 \
     libssl-dev \
-    dos2unix \
+    python3 \
+    sed \
+    wget \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/* \
     # Create necessary directory structure matching Synology DSM 7.2
     && mkdir -p /usr/syno/etc \
@@ -38,12 +38,9 @@ RUN apt-get update && apt-get install -y \
     && echo 'login_welcome_msg=""' >> /etc/synoinfo.conf \
     # Create dummy DSM 7 default wallpapers
     && touch /usr/syno/synoman/webman/resources/images/2x/default_wallpaper/dsm7_01.jpg \
-    && touch /usr/syno/synoman/webman/resources/images/1x/default_wallpaper/dsm7_01.jpg
-
-
-
-# Build and Install kcov
-RUN git clone https://github.com/SimonKagstrom/kcov.git /tmp/kcov \
+    && touch /usr/syno/synoman/webman/resources/images/1x/default_wallpaper/dsm7_01.jpg \
+    # Build and install kcov from source (no distro package at v43).
+    && git clone https://github.com/SimonKagstrom/kcov.git /tmp/kcov \
     && cd /tmp/kcov \
     && git checkout v43 \
     && mkdir build \

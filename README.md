@@ -150,6 +150,10 @@ This project maintains high code quality standards:
    ./scripts/quality/quality_check.ps1
    ```
    This enforces shfmt, ShellCheck, Ruff, Mypy, yamllint, actionlint, PSScriptAnalyzer, and the 140-char line-length limit for non-Markdown files.
+*   **Static Analysis:** SonarQube Cloud runs in CI on every push and PR, and can be run locally with
+    ```bash
+    SONAR_TOKEN=... ./scripts/quality/sonar_scan.sh
+    ```
 *   **No Suppressions Allowed:** Lint disable directives, suppressions, and ignore-based bypasses are not allowed.
 *   **Mandatory Coverage:** 90%+ code coverage is required for all changes.
 *   **Local Testing:** Use the provided PowerShell script to run tests locally via Docker.

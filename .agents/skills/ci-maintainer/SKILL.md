@@ -13,15 +13,25 @@ action versions, or Docker DSM mock dependencies used by CI.
 
 ## Policy
 
-1. **Stable final versions only**: Pin Actions to published tags/versions (for
-   example `@v7.0.0`), not floating `@main` / `@master`. Prefer the latest stable
-   patch on the major line already in use unless a major bump is intentional and
-   tested.
+1. **Full commit SHA pins**: Pin Actions to a 40-character commit SHA with the
+   version in a trailing comment (`uses: actions/checkout@3d3c42e... # v7.0.1`),
+   never a bare tag and never floating `@main` / `@master` — a tag can be moved,
+   a SHA cannot. Resolve it with
+   `gh api repos/<owner>/<repo>/git/ref/tags/<tag> --jq .object.sha`
+   (dereference an annotated tag via `git/tags/<sha>`), and update the SHA and
+   its comment together. Track the latest stable patch on the major line already
+   in use unless a major bump is intentional and tested.
+1. **SonarQube Cloud**: Automatic Analysis scans pushes and PRs today. The
+   `sonarqube` job is the CI-based alternative, gated on the `SONAR_ENABLED`
+   variable plus a `SONAR_TOKEN` secret; the two modes are mutually exclusive,
+   so never enable both. Keep scanner settings in `sonar-project.properties` so
+   the local scan (`./scripts/quality/sonar_scan.sh`) and CI stay identical —
+   do not move settings into workflow inputs.
 1. **Local ↔ CI parity**: CI quality must run the same mandatory checks as
    `./scripts/quality/quality_check.sh`. Do not add ignores that make CI greener
    than local.
-1. **Pipeline shape**: Preserve `quality` → parallel `unit` / `component` /
-   `e2e` → `coverage-report` with hard **90%** enforcement via
+1. **Pipeline shape**: Preserve `quality` → parallel `sonarqube` / `unit` /
+   `component` / `e2e` → `coverage-report` with hard **90%** enforcement via
    `scripts/coverage_checks/check_coverage_threshold.py`.
 1. **Reproducible mock**: Keep `tests/Dockerfile.dsm_mock` and related test
    helpers deterministic; document breaking image changes in agent docs.
@@ -52,6 +62,6 @@ action versions, or Docker DSM mock dependencies used by CI.
 1. **Completion criteria**:
 
    - Workflow syntax clean
-   - Pins are stable finals
+   - Pins are full commit SHAs with a version comment
    - All relevant markdown updated in the same change set — see root `AGENTS.md`
      § Always Update Relevant Markdown

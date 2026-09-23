@@ -39,6 +39,17 @@ or opening a PR — same spirit as CI without waiting for GitHub Actions.
      Tee-Object -FilePath reports/agent-logs/tests.log
    ```
 
+1. **Static analysis** (needs `SONAR_TOKEN`; skip with a note when unavailable):
+
+   ```bash
+   SONAR_TOKEN=... ./scripts/quality/sonar_scan.sh 2>&1 |
+     tee reports/agent-logs/sonar.log
+   exit "${PIPESTATUS[0]}"
+   ```
+
+   Then confirm the quality gate on the project and fix every new finding — the
+   no-suppressions rule applies to Sonar issues too.
+
 1. **Confirm coverage contract** before finishing:
 
    - Coverage ≥ **90%**
@@ -49,6 +60,7 @@ or opening a PR — same spirit as CI without waiting for GitHub Actions.
 1. **Completion criteria**:
 
    - Quality exit 0
+   - SonarQube Cloud quality gate green (or the skip explicitly reported)
    - Unit, component, and e2e green under DSM mock
    - Threshold and badge satisfied
    - All relevant markdown updated in the same change set — see root `AGENTS.md`

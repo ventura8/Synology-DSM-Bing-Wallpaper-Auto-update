@@ -59,7 +59,7 @@ build_api_url() {
   # Construct API URL with region and resolution-specific parameters.
   BASE_PARAMS="format=js&idx=0&n=1&mkt=${BING_MARKET}"
 
-  if [ "$BING_RESOLUTION" == "4k" ]; then
+  if [[ "$BING_RESOLUTION" == "4k" ]]; then
     echo "https://www.bing.com/HPImageArchive.aspx?${BASE_PARAMS}&uhd=1&uhdwidth=3840&uhdheight=2160"
     return
   fi
@@ -69,9 +69,9 @@ build_api_url() {
 
 ensure_archive_dir() {
   # Create archive directory up front when archive mode is enabled.
-  if [ "$ENABLE_ARCHIVE" == "true" ]; then
-    if [ -z "$SAVE_PATH" ]; then
-      echo "Error: ENABLE_ARCHIVE is true, but SAVE_PATH is empty."
+  if [[ "$ENABLE_ARCHIVE" == "true" ]]; then
+    if [[ -z "$SAVE_PATH" ]]; then
+      echo "Error: ENABLE_ARCHIVE is true, but SAVE_PATH is empty." >&2
       exit 1
     fi
 
@@ -81,7 +81,7 @@ ensure_archive_dir() {
 
 fail_invalid_response() {
   # Centralize invalid API-response handling for all metadata checks.
-  echo "Error: API response invalid."
+  echo "Error: API response invalid." >&2
   exit 1
 }
 
@@ -89,15 +89,17 @@ sanitize_conf_value() {
   # Strip characters that break or expand inside synoinfo.conf quoted values.
   # Use octal escapes so tr does not treat backslash as an escape introducer.
   # \042=" \140=` \134=\ \044=$ \012=LF \015=CR
-  printf '%s' "$1" | tr -d '\042\140\134\044\012\015'
+  local raw="$1"
+  printf '%s' "$raw" | tr -d '\042\140\134\044\012\015'
+  return 0
 }
 
 validate_downloaded_jpeg() {
   # Require JPEG SOI (FF D8 FF) before any system path writes.
   local magic
   magic=$(dd if="$TMP_FILE" bs=3 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n')
-  if [ "$magic" != "ffd8ff" ]; then
-    echo "Error: Downloaded file is not a valid JPEG."
+  if [[ "$magic" != "ffd8ff" ]]; then
+    echo "Error: Downloaded file is not a valid JPEG." >&2
     exit 1
   fi
 }
@@ -105,8 +107,8 @@ validate_downloaded_jpeg() {
 validate_archive_date() {
   # Bing enddate is YYYYMMDD; reject anything else to block path traversal.
   SAFE_DATE=$(printf '%s' "$DATE" | tr -cd '0-9')
-  if [ -z "$SAFE_DATE" ] || [ "${#SAFE_DATE}" -ne 8 ] || [ "$SAFE_DATE" != "$DATE" ]; then
-    echo "Error: Invalid date from API."
+  if [[ -z "$SAFE_DATE" ]] || [[ "${#SAFE_DATE}" -ne 8 ]] || [[ "$SAFE_DATE" != "$DATE" ]]; then
+    echo "Error: Invalid date from API." >&2
     exit 1
   fi
 }
@@ -128,7 +130,7 @@ ensure_archive_within_save_path() {
   case "$ARCHIVE_FILE" in
     "$resolved_save"/*) return 0 ;;
     *)
-      echo "Error: Archive path escapes SAVE_PATH."
+      echo "Error: Archive path escapes SAVE_PATH." >&2
       exit 1
       ;;
   esac
@@ -137,12 +139,12 @@ ensure_archive_within_save_path() {
 reject_archive_symlink() {
   # cp/chmod follow a symlink at the destination, so a pre-planted link in a
   # writable share would redirect the root write anywhere. Refuse it outright.
-  if [ -L "$ARCHIVE_FILE" ]; then
-    echo "Error: Archive destination is a symlink; refusing to write."
+  if [[ -L "$ARCHIVE_FILE" ]]; then
+    echo "Error: Archive destination is a symlink; refusing to write." >&2
     exit 1
   fi
-  if [ -e "$ARCHIVE_FILE" ] && [ ! -f "$ARCHIVE_FILE" ]; then
-    echo "Error: Archive destination exists and is not a regular file."
+  if [[ -e "$ARCHIVE_FILE" ]] && [[ ! -f "$ARCHIVE_FILE" ]]; then
+    echo "Error: Archive destination exists and is not a regular file." >&2
     exit 1
   fi
 }
@@ -174,13 +176,13 @@ write_archive_file() {
   if ! stage_root=$(archive_staging_root) ||
     ! stage_dir=$(mktemp -d "$stage_root/@bing_archive.XXXXXX"); then
     echo "Error: Cannot stage the archive: SAVE_PATH must live on an internal volume (/volumeN)" \
-      "that only root can write to. Encrypted shares and USB shares are their own mounts and are not supported."
+      "that only root can write to. Encrypted shares and USB shares are their own mounts and are not supported." >&2
     exit 1
   fi
   staged="$stage_dir/$(basename "$ARCHIVE_FILE")"
   if ! cp -f "$TMP_FILE" "$staged" || ! chmod 644 "$staged"; then
     rm -rf "$stage_dir"
-    echo "Error: Cannot write archive file."
+    echo "Error: Cannot write archive file." >&2
     exit 1
   fi
   place_archive_file "$staged" || {
@@ -199,8 +201,8 @@ place_archive_file() {
   # same-day re-run replaces the previous file.
   local staged="$1"
   rm -f "$ARCHIVE_FILE"
-  if ! ln -n "$staged" "$ARCHIVE_FILE" || [ -L "$ARCHIVE_FILE" ] || [ ! -f "$ARCHIVE_FILE" ]; then
-    echo "Error: Archive destination changed during write; refusing to continue."
+  if ! ln -n "$staged" "$ARCHIVE_FILE" || [[ -L "$ARCHIVE_FILE" ]] || [[ ! -f "$ARCHIVE_FILE" ]]; then
+    echo "Error: Archive destination changed during write; refusing to continue." >&2
     return 1
   fi
 }
@@ -215,13 +217,14 @@ fetch_picture_info() {
   # Basic validation before extracting fields.
   echo "$PIC_INFO" | grep -q enddate || fail_invalid_response
   echo "$PIC_INFO" | grep -q '"url":"' || fail_invalid_response
+  return 0
 }
 
 extract_metadata() {
   # --- Metadata Extraction ---
   # Use grep -o with head -1 to keep the first image record deterministic.
   URL_RELATIVE=$(echo "$PIC_INFO" | grep -o '"url":"[^"]*"' | head -1 | cut -d'"' -f4)
-  [ -n "$URL_RELATIVE" ] || fail_invalid_response
+  [[ -n "$URL_RELATIVE" ]] || fail_invalid_response
 
   PIC_URL="https://www.bing.com${URL_RELATIVE}"
   DATE=$(echo "$PIC_INFO" | grep -o '"enddate":"[^"]*"' | head -1 | cut -d'"' -f4)
@@ -237,6 +240,7 @@ extract_metadata() {
   echo "Title: $TITLE"
   echo "Copyright: $COPYRIGHT"
   echo "Download Link: $PIC_URL"
+  return 0
 }
 
 download_image() {
@@ -244,8 +248,8 @@ download_image() {
   wget -t 5 "$PIC_URL" -qO "$TMP_FILE"
 
   # Verify the downloaded file is non-empty before updating system files.
-  [ -s "$TMP_FILE" ] || {
-    echo "Error: Download failed."
+  [[ -s "$TMP_FILE" ]] || {
+    echo "Error: Download failed." >&2
     exit 1
   }
 
@@ -269,6 +273,7 @@ update_system_config() {
   echo "login_welcome_title=\"$TITLE\"" >>/etc/synoinfo.conf
   sed -i s/login_welcome_msg=.*//g /etc/synoinfo.conf
   echo "login_welcome_msg=\"$COPYRIGHT\"" >>/etc/synoinfo.conf
+  return 0
 }
 
 update_dsm7_resources() {
@@ -277,22 +282,23 @@ update_dsm7_resources() {
   DSM7_IMG_PATH_1X="/usr/syno/synoman/webman/resources/images/1x/default_wallpaper/dsm7_01.jpg"
 
   # Update the 2x asset directly when the DSM 7 resource directory exists.
-  if [ -d "$(dirname "$DSM7_IMG_PATH_2X")" ]; then
+  if [[ -d "$(dirname "$DSM7_IMG_PATH_2X")" ]]; then
     cp -f "$TMP_FILE" "$DSM7_IMG_PATH_2X"
     chmod 644 "$DSM7_IMG_PATH_2X"
     echo "Updated DSM 7 2x wallpaper."
   fi
 
   # Keep the 1x asset pointing at the 2x image so both paths stay in sync.
-  if [ -d "$(dirname "$DSM7_IMG_PATH_1X")" ]; then
+  if [[ -d "$(dirname "$DSM7_IMG_PATH_1X")" ]]; then
     ln -sf "$DSM7_IMG_PATH_2X" "$DSM7_IMG_PATH_1X"
     echo "Updated DSM 7 1x wallpaper symlink."
   fi
+  return 0
 }
 
 archive_image() {
   # --- Step 5: Archive Image (Optional) ---
-  if [ "$ENABLE_ARCHIVE" == "true" ]; then
+  if [[ "$ENABLE_ARCHIVE" == "true" ]]; then
     # Sanitize metadata for valid filenames (alphanumeric, dots, dashes, spaces).
     SAFE_TITLE=$(echo "$TITLE" | tr -cd '[:alnum:] .-')
     SAFE_COPYRIGHT=$(echo "$COPYRIGHT" | tr -cd '[:alnum:] .-')
@@ -312,6 +318,7 @@ archive_image() {
 cleanup() {
   # --- Cleanup ---
   rm -f "$TMP_FILE"
+  return 0
 }
 
 main() {
@@ -320,7 +327,7 @@ main() {
   ensure_archive_dir
   fetch_picture_info "$API_URL"
   extract_metadata
-  if [ "$ENABLE_ARCHIVE" == "true" ]; then
+  if [[ "$ENABLE_ARCHIVE" == "true" ]]; then
     validate_archive_date
   fi
   download_image
@@ -330,6 +337,7 @@ main() {
   cleanup
 
   echo "Wallpaper and text configuration updated."
+  return 0
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

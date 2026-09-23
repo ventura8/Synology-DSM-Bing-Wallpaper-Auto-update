@@ -34,6 +34,23 @@ backgrounds, and updates the login welcome title and message from Bing metadata.
   Both drive `pre-commit run --all-files` plus repo line-length checks.
   [`.pre-commit-config.yaml`](.pre-commit-config.yaml) is the SSOT for which tools run.
 
+- **Static analysis (SonarQube Cloud)**: project `ventura8_Synology-DSM-Bing-Wallpaper-Auto-update`,
+  organization `ventura8`. [`sonar-project.properties`](sonar-project.properties) is the SSOT for
+  scanner settings and is shared by local runs and CI — never fork the settings into workflow inputs.
+
+  ```bash
+  SONAR_TOKEN=... ./scripts/quality/sonar_scan.sh
+  ```
+
+  The script runs the pinned `sonar-scanner-cli` Docker image against the current branch, so no
+  scanner install is needed. Sonar analyses Bash, Python, PowerShell, Dockerfile, and workflow
+  YAML, so it overlaps ShellCheck on the product script and adds rules ShellCheck has no view of
+  (stderr routing, explicit returns, `[[` over `[`). Sonar findings are subject to the same
+  no-suppressions rule: fix the issue, do not mark it "Won't Fix" to get a green gate. The two
+  standing exceptions are security hotspots whose answer is genuinely "safe here" and which are
+  reviewed as such in Sonar, not silenced in code: the DSM mock image must run as root, and
+  `tests/archive_write_cases.sh` must `chmod 777` a fixture mount to prove that branch is refused.
+
 - **Required tooling**:
   - Shell: `shfmt`, ShellCheck
   - Python: Ruff, Mypy
@@ -98,8 +115,14 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
 
 - Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on push/PR to
   `main` / `master`.
-- Order: **quality** → parallel **unit / component / e2e** → **coverage-report**
+- Order: **quality** → parallel **sonarqube / unit / component / e2e** → **coverage-report**
   (merge, transform, sticky PR comment, hard 90% gate).
+- The **sonarqube** job scans with `SonarSource/sonarqube-scan-action` and then blocks on
+  `sonarqube-quality-gate-action`; it checks out with `fetch-depth: 0` so Sonar can attribute
+  new code correctly. It is gated on the `SONAR_ENABLED` repository **variable** being `"true"`
+  and needs the `SONAR_TOKEN` repository **secret**. The two analysis modes are mutually
+  exclusive: while Automatic Analysis is on (the current state) this job must stay off, and
+  enabling it means turning Automatic Analysis off in the SonarQube Cloud project settings.
 - Release: [`.github/workflows/release.yml`](.github/workflows/release.yml) on
   `v*` tag push — validates the tag is on `main`, waits for CI Pipeline success
   on that commit (polls up to 45 minutes), then publishes the GitHub Release from
@@ -107,8 +130,10 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
   `bing_wallpaper_auto_update.sh` + `SHA256SUMS`. See the `release` skill.
 - Local quality and CI quality must stay equivalent (same pre-commit / quality
   scripts). Do not add CI-only skips that weaken local gates.
-- Pin GitHub Actions to **stable final versions** (no floating `@main` / `@master`
-  for third-party actions). Prefer latest stable patch on the chosen major line.
+- Pin GitHub Actions to a **full 40-character commit SHA** with the version in a trailing
+  comment (`uses: actions/checkout@3d3c42e... # v7.0.1`). A tag is mutable; the SHA is the
+  thing that actually pins. Track the latest stable patch on the chosen major line, and update
+  the SHA and the comment together. No floating `@main` / `@master` for third-party actions.
 - Keep test container / Docker DSM mock dependencies reproducible.
 
 ## Command Execution & Live Reporting
