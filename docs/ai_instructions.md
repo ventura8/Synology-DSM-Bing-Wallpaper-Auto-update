@@ -19,5 +19,6 @@ Thin mirrors (`CLAUDE.md`, `GEMINI.md`, `.agent/instructions.md`,
 - [Project Overview & Logic](project_overview.md)
 - [Configuration](configuration.md)
 - [Development & Standards](development_standards.md)
-- [Release notes](releases/v1.0.4.md) (prior: [v1.0.3](releases/v1.0.3.md),
-  [v1.0.2](releases/v1.0.2.md), [v1.0.1](releases/v1.0.1.md))
+- [Release notes](releases/v1.0.5.md) (prior: [v1.0.4](releases/v1.0.4.md),
+  [v1.0.3](releases/v1.0.3.md), [v1.0.2](releases/v1.0.2.md),
+  [v1.0.1](releases/v1.0.1.md))

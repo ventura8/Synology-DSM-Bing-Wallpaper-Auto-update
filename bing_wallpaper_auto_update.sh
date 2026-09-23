@@ -2,7 +2,7 @@
 
 # ==============================================================================
 # Synology DSM 7.2 Bing Daily Wallpaper Script (4K/UHD)
-# Version: 1.0.4
+# Version: 1.0.5
 #
 # Description:
 # This script downloads the daily Bing wallpaper and updates the DSM login screen.
