@@ -1,6 +1,15 @@
 # Minimum Python: 3.10 (see also docs/development_standards.md and pyproject.toml Ruff/Mypy targets)
+#
+# This file is the hand-edited input. CI installs from requirements/dev.lock, which pins the
+# transitive dependencies with hashes. After editing anything here, regenerate the lock with
+# Python 3.12 (the version CI uses):
+#
+#   pip-compile --generate-hashes --allow-unsafe --strip-extras \
+#     --output-file requirements/dev.lock requirements/dev.txt
+#
+# and commit both files together.
 pip==26.2.1
 pre-commit==4.6.2
-ruff==0.16.7
+ruff==0.16.8
 mypy==2.3.1
 yamllint==1.38.0

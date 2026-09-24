@@ -25,8 +25,9 @@ EXCLUDED_DIRS = {
     "node_modules",
     "__pycache__",
 }
-SHELL_FUNCTION_PATTERN = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(\)\s*\{")
-POWERSHELL_FUNCTION_PATTERN = re.compile(r"^\s*function\s+([A-Za-z_][A-Za-z0-9_-]*)\b", re.IGNORECASE)
+# re.ASCII keeps \w at [A-Za-z0-9_] - these parse source identifiers, not text.
+SHELL_FUNCTION_PATTERN = re.compile(r"^\s*([A-Za-z_]\w*)\s*\(\)\s*\{", re.ASCII)
+POWERSHELL_FUNCTION_PATTERN = re.compile(r"^\s*function\s+([A-Z_][\w-]*)\b", re.IGNORECASE | re.ASCII)
 SHELL_DECISION_PATTERN = re.compile(r"\b(if|elif|for|while|until|case)\b|&&|\|\|")
 POWERSHELL_DECISION_PATTERN = re.compile(r"\b(if|elseif|for|foreach|while|switch|catch)\b", re.IGNORECASE)
 

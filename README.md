@@ -1,7 +1,7 @@
 # **🖼️ Synology DSM 7.2 Bing Daily Wallpaper Script (4K)**
 
 [![Script](https://img.shields.io/badge/Script-Shell-blue.svg)](https://github.com/ventura8/Synology-DSM-Bing-Wallpaper-Auto-update)
-[![Release](https://img.shields.io/badge/release-v1.0.4-blue.svg)](docs/releases/v1.0.4.md)
+[![Release](https://img.shields.io/badge/release-v1.0.5-blue.svg)](docs/releases/v1.0.5.md)
 ![Coverage](assets/coverage.svg)
 
 This bash script automates the process of fetching the daily Bing wallpaper in **4K (UHD)** resolution and applying it to your Synology DSM 7.2 Login Screen. It intelligently extracts metadata to update the login screen's **Welcome Title** and **Message** with the image description and copyright credit.
@@ -150,6 +150,10 @@ This project maintains high code quality standards:
    ./scripts/quality/quality_check.ps1
    ```
    This enforces shfmt, ShellCheck, Ruff, Mypy, yamllint, actionlint, PSScriptAnalyzer, and the 140-char line-length limit for non-Markdown files.
+*   **Static Analysis:** SonarQube Cloud runs in CI on every push and PR, and can be run locally with
+    ```bash
+    SONAR_TOKEN=... ./scripts/quality/sonar_scan.sh
+    ```
 *   **No Suppressions Allowed:** Lint disable directives, suppressions, and ignore-based bypasses are not allowed.
 *   **Mandatory Coverage:** 90%+ code coverage is required for all changes.
 *   **Local Testing:** Use the provided PowerShell script to run tests locally via Docker.

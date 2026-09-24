@@ -17,12 +17,13 @@ expect_failure() {
   local output
   output=$(write_archive_file 2>&1)
   local status=$?
-  if [ "$status" -ne 0 ] && printf '%s' "$output" | grep -q "$expected_msg"; then
+  if [[ "$status" -ne 0 ]] && printf '%s' "$output" | grep -q "$expected_msg"; then
     echo "[PASS] $label"
   else
     echo "[FAIL] $label (status=$status output=$output)"
     FAILURES=1
   fi
+  return 0
 }
 
 no_staging_left() {
@@ -33,6 +34,7 @@ no_staging_left() {
   else
     echo "[PASS] no staging directory left behind: $label"
   fi
+  return 0
 }
 
 export SAVE_PATH="$WORK"
@@ -54,6 +56,7 @@ stub_df() {
 printf 'x\nx x x x x %s\n' "$1"
 STUB
   chmod +x "$WORK/bin/df"
+  return 0
 }
 expect_root() {
   local label="$1" verdict="$2" got
@@ -62,12 +65,13 @@ expect_root() {
   else
     got=refuse
   fi
-  if [ "$got" = "$verdict" ]; then
+  if [[ "$got" = "$verdict" ]]; then
     echo "[PASS] $label: $got"
   else
     echo "[FAIL] $label: expected $verdict, got $got"
     FAILURES=1
   fi
+  return 0
 }
 mkdir -p "$WORK/bin" "$WORK/volume1/Share" /volume8 /volume9
 chmod 755 "$WORK/volume1/Share" /volume8
@@ -97,7 +101,7 @@ no_staging_left "placement refusal"
 # reject_archive_symlink must refuse it and leave the node in place.
 output=$(reject_archive_symlink 2>&1)
 status=$?
-if [ "$status" -ne 0 ] && printf '%s' "$output" | grep -q "not a regular file" && [ -d "$WORK/dir-dest.jpg" ]; then
+if [[ "$status" -ne 0 ]] && printf '%s' "$output" | grep -q "not a regular file" && [[ -d "$WORK/dir-dest.jpg" ]]; then
   echo "[PASS] directory at destination rejected and preserved"
 else
   echo "[FAIL] directory at destination not rejected (status=$status output=$output)"
@@ -107,7 +111,7 @@ fi
 # Case 6: a same-day re-run replaces the previous archive file.
 ARCHIVE_FILE="$WORK/rerun.jpg"
 printf 'old' >"$ARCHIVE_FILE"
-if write_archive_file && [ "$(cat "$ARCHIVE_FILE")" = "jpeg" ] && [ ! -L "$ARCHIVE_FILE" ]; then
+if write_archive_file && [[ "$(cat "$ARCHIVE_FILE")" = "jpeg" ]] && [[ ! -L "$ARCHIVE_FILE" ]]; then
   echo "[PASS] existing archive file replaced on re-run"
 else
   echo "[FAIL] existing archive file not replaced on re-run"

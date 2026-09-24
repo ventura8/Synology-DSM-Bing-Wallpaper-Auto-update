@@ -7,7 +7,7 @@ echo "Mode: CHECK_ARCHIVE=${CHECK_ARCHIVE:-false}"
 HAS_ERRORS=0
 
 # 1. Verify Login Background was created
-if [ -f "/usr/syno/etc/login_background.jpg" ]; then
+if [[ -f "/usr/syno/etc/login_background.jpg" ]]; then
   echo "[PASS] /usr/syno/etc/login_background.jpg exists."
 else
   echo "[FAIL] /usr/syno/etc/login_background.jpg missing."
@@ -33,16 +33,16 @@ else
 fi
 
 # 3. Verify DSM 7 Resources
-if [ -s "/usr/syno/synoman/webman/resources/images/2x/default_wallpaper/dsm7_01.jpg" ]; then
+if [[ -s "/usr/syno/synoman/webman/resources/images/2x/default_wallpaper/dsm7_01.jpg" ]]; then
   echo "[PASS] DSM 7 2x wallpaper exists and has content."
 else
   echo "[FAIL] DSM 7 2x wallpaper missing or empty."
   HAS_ERRORS=1
 fi
 
-if [ -L "/usr/syno/synoman/webman/resources/images/1x/default_wallpaper/dsm7_01.jpg" ]; then
+if [[ -L "/usr/syno/synoman/webman/resources/images/1x/default_wallpaper/dsm7_01.jpg" ]]; then
   DSM1X_TARGET=$(readlink -f "/usr/syno/synoman/webman/resources/images/1x/default_wallpaper/dsm7_01.jpg")
-  if [ -n "$DSM1X_TARGET" ] && [ -s "$DSM1X_TARGET" ]; then
+  if [[ -n "$DSM1X_TARGET" ]] && [[ -s "$DSM1X_TARGET" ]]; then
     echo "[PASS] DSM 7 1x wallpaper symlink exists and target has content."
   else
     echo "[FAIL] DSM 7 1x wallpaper symlink target missing or empty."
@@ -54,7 +54,7 @@ else
 fi
 
 # 4. Verify Archive (Conditional)
-if [ "$CHECK_ARCHIVE" == "true" ]; then
+if [[ "$CHECK_ARCHIVE" == "true" ]]; then
   # The script uses format: "Region - Date - Title - Copyright.jpg" or similiar
   # Actually logic is: "$SAVE_PATH/${DATE} - ${SAFE_TITLE} - ${SAFE_COPYRIGHT}.jpg"
   # Mock Date: 20230102
@@ -63,7 +63,7 @@ if [ "$CHECK_ARCHIVE" == "true" ]; then
 
   EXPECTED_ARCHIVE="/volume1/web/wallpapers/20230102 - Mock Title -  Mock Credit.jpg"
 
-  if [ -f "$EXPECTED_ARCHIVE" ] && [ ! -L "$EXPECTED_ARCHIVE" ]; then
+  if [[ -f "$EXPECTED_ARCHIVE" ]] && [[ ! -L "$EXPECTED_ARCHIVE" ]]; then
     echo "[PASS] Archive file created: $EXPECTED_ARCHIVE"
   else
     echo "[FAIL] Archive file missing: $EXPECTED_ARCHIVE"
@@ -80,7 +80,7 @@ if [ "$CHECK_ARCHIVE" == "true" ]; then
   fi
 fi
 
-if [ $HAS_ERRORS -eq 0 ]; then
+if [[ $HAS_ERRORS -eq 0 ]]; then
   echo "=== Verification SUCCESS ==="
   exit 0
 else

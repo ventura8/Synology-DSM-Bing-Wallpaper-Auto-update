@@ -7,14 +7,19 @@ Write-Host "Running mandatory quality checks before tests..." -ForegroundColor C
 & "$PSScriptRoot/../quality/quality_check.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Quality checks failed." }
 
-# Clean previous runs
-if (Test-Path $coverageBase) { Remove-Item -Recurse -Force $coverageBase }
-New-Item -ItemType Directory -Path $coverageBase | Out-Null
-
 # 1. Build the Docker image
 Write-Host "Building Docker image..." -ForegroundColor Cyan
 docker build -t $dsmImage -f tests/Dockerfile.dsm_mock .
 if ($LASTEXITCODE -ne 0) { Write-Error "Docker build failed."; exit 1 }
+
+# Clean previous runs. kcov writes its output as root inside the container, so anything
+# left by an earlier run is not removable by the invoking user - delete it as root instead.
+if (Test-Path $coverageBase) {
+    Write-Host "Removing previous coverage output..." -ForegroundColor Cyan
+    docker run --rm -v "${PWD}:/workdir" -w /workdir $dsmImage bash -c "rm -rf coverage"
+    if ($LASTEXITCODE -ne 0) { throw "Could not remove the previous coverage directory." }
+}
+New-Item -ItemType Directory -Path $coverageBase | Out-Null
 
 # 2. Run Tests in Parallel using PowerShell Jobs
 Write-Host "Starting Parallel Test Runs (Unit, Component, E2E)..." -ForegroundColor Cyan
@@ -37,13 +42,16 @@ $testTasks = @(
     }
 )
 
+$logDir = Join-Path $PWD "reports/agent-logs"
+New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+
 $jobs = @()
 foreach ($task in $testTasks) {
     New-Item -ItemType Directory -Path (Join-Path $coverageBase $task.Name.ToLower()) -Force | Out-Null
     Write-Host "Launching $($task.Name) tests..." -ForegroundColor Green
+    $logPath = Join-Path $logDir "$($task.CoverageMode).log"
     $jobs += Start-Job -ScriptBlock {
-        param($taskConfig, $name, $basePath, $image)
-        Write-Host "Running $name Job..."
+        param($taskConfig, $name, $basePath, $image, $logPath)
         $coverageMount = "${basePath}/$($taskConfig.CoverageSubdir):/app/coverage"
         $bashCommand = "./run_kcov_cases.sh '$($taskConfig.CoverageMode)' /app/coverage"
         $dockerArgs = @(
@@ -60,15 +68,21 @@ foreach ($task in $testTasks) {
             "-c",
             $bashCommand
         )
-        & docker @dockerArgs
+        & docker @dockerArgs *> $logPath
         if ($LASTEXITCODE -ne 0) {
-            throw "$name job failed with exit code $LASTEXITCODE"
+            throw "$name job failed with exit code $LASTEXITCODE. See $logPath"
         }
-    } -ArgumentList $task, $task.Name, $coverageBase, $dsmImage
+    } -ArgumentList $task, $task.Name, $coverageBase, $dsmImage, $logPath
 }
 
 Write-Host "Waiting for tests to complete..." -ForegroundColor Yellow
 Wait-Job $jobs | Out-Null
+
+foreach ($task in $testTasks) {
+    $logPath = Join-Path $logDir "$($task.CoverageMode).log"
+    Write-Host "--- $($task.Name) output ---" -ForegroundColor Cyan
+    if (Test-Path $logPath) { Get-Content $logPath | Write-Host }
+}
 
 # Check for failure
 $jobErrors = @()
@@ -113,6 +127,26 @@ docker run --rm `
     $dsmImage bash -c "dos2unix coverage/merge_all.sh && chmod +x coverage/merge_all.sh && ./coverage/merge_all.sh"
 if ($LASTEXITCODE -ne 0) {
     throw "Coverage merge failed."
+}
+
+# Under a root-daemon Docker, kcov's output is owned by root and the host-side transform
+# and badge steps below cannot rewrite it. Under rootless Docker or Docker Desktop the
+# container's root is already the invoking user, and chowning to our own uid from inside
+# the container would resolve to a subordinate uid and lock us out of our own files.
+# So only reclaim when the merged report really is owned by somebody else.
+if ($IsLinux -or $IsMacOS) {
+    $mergedXml = Join-Path $coverageBase "merged/kcov-merged/cobertura.xml"
+    if (Test-Path $mergedXml) {
+        $hostUid = (& id -u).Trim()
+        $hostGid = (& id -g).Trim()
+        $ownerUid = (& stat -c '%u' $mergedXml).Trim()
+        if ($ownerUid -ne $hostUid) {
+            Write-Host "Reclaiming ownership of coverage output from uid $ownerUid..." -ForegroundColor Cyan
+            docker run --rm -v "${PWD}:/workdir" -w /workdir `
+                $dsmImage bash -c "chown -R ${hostUid}:${hostGid} coverage"
+            if ($LASTEXITCODE -ne 0) { throw "Could not reclaim ownership of the coverage directory." }
+        }
+    }
 }
 
 # 4. Check for report
