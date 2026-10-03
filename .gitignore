@@ -43,3 +43,4 @@ __pycache__/
 !assets/*.svg
 .coverage
 coverage-python.xml
+coverage-powershell.xml

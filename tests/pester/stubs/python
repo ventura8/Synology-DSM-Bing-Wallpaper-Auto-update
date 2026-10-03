@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Stand-in for python in the Pester suite: logs its arguments and fails when
+# STUB_FAIL_MATCH appears in them.
+echo "python $*" >>"${STUB_LOG:?}"
+if [[ -n "${STUB_FAIL_MATCH:-}" && "$*" == *"${STUB_FAIL_MATCH}"* ]]; then
+  exit 1
+fi
+exit 0

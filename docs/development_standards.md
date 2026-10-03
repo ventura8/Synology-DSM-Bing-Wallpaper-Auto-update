@@ -2,7 +2,7 @@
 
 This document outlines the coding standards, environment management, and testing requirements for the project.
 
-**Current release:** [v1.0.6](releases/v1.0.6.md)
+**Current release:** [v1.0.7](releases/v1.0.7.md)
 
 ## Environment & Dependency Management
 
@@ -85,6 +85,7 @@ This document outlines the coding standards, environment management, and testing
   script (kcov) and the Python helpers under `scripts/` (coverage.py, `python-tests` job).
   Run the Python lane locally with
   `python -m coverage run -m unittest discover -s tests -p "test_*.py" && python -m coverage report`.
+  PowerShell scripts are covered by Pester (`pwsh -File tests/run_pester.ps1`, 90% line floor).
 - **Local Testing**:
   - Run the mandatory quality gate before tests:
     ```powershell

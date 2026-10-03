@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Stand-in for the docker CLI in the Pester suite: logs its arguments, fakes the files the
+# real containers would produce, and fails when STUB_FAIL_MATCH appears in the arguments.
+echo "docker $*" >>"${STUB_LOG:?}"
+if [[ -n "${STUB_FAIL_MATCH:-}" && "$*" == *"${STUB_FAIL_MATCH}"* ]]; then
+  exit 1
+fi
+if [[ "$*" == *"rm -rf coverage"* ]]; then
+  rm -rf coverage
+fi
+if [[ "$*" == *merge_all.sh* && "${STUB_NO_REPORT:-}" != "1" ]]; then
+  mkdir -p coverage/merged/kcov-merged
+  printf '<coverage line-rate="1"><packages><package><classes>%s</classes></package></packages></coverage>\n' \
+    '<class name="a" filename="a.sh" line-rate="1"/>' >coverage/merged/kcov-merged/cobertura.xml
+fi
+if [[ "$*" == *codecoveragesummary* ]]; then
+  echo '<svg/>' >badge.svg
+fi
+exit 0
