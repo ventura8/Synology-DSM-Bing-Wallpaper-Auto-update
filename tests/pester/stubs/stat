@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Stand-in for stat in the Pester suite: reports STUB_OWNER_UID as the file owner when set,
+# so the root-owned-coverage branch can be exercised without a root-owned file.
+if [[ -n "${STUB_OWNER_UID:-}" ]]; then
+  echo "${STUB_OWNER_UID}"
+  exit 0
+fi
+exec /usr/bin/env -u STUB_OWNER_UID "$(command -v -p stat)" "$@"

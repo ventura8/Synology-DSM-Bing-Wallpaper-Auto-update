@@ -102,6 +102,7 @@ backgrounds, and updates the login welcome title and message from Bing metadata.
 | Component | `run_kcov_cases.sh component` | Integrated pieces against mock FS; also `archive_write_cases.sh` (sourced helpers, fail-closed branches) |
 | E2E | `run_kcov_cases.sh e2e` | Full apply path; verified by `tests/verify_dsm_mock.sh` |
 | Python | `python -m coverage run -m unittest discover -s tests -p "test_*.py"` | Helpers under `scripts/` (coverage.py, `fail_under = 90`) |
+| PowerShell | `pwsh -File tests/run_pester.ps1` (Pester 6.2.0) | `scripts/**/*.ps1`; 90% line floor; writes `coverage-powershell.xml` |
 
 Local orchestration (builds image, runs lanes, merges coverage, updates badge):
 
@@ -119,7 +120,11 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
 
 - Coverage is gathered with **kcov** on the product shell script and with **coverage.py** on the
   Python helpers under `scripts/` (settings in [`pyproject.toml`](pyproject.toml)). Sonar counts both,
-  so an untested helper drags the Sonar figure down even when the kcov gate is green. Python tests
+  so an untested helper drags the Sonar figure down even when the kcov gate is green. The PowerShell
+  scripts are covered by Pester (`tests/pester/`), whose only fakes are PATH stubs for `docker`,
+  `python` and `stat` in `tests/pester/stubs/` plus mocks of PSScriptAnalyzer / PSGallery cmdlets.
+  `run_tests_local.ps1` really launches its `Start-Job` lanes, so the stubs must stay executables, not
+  Pester mocks (a job is a separate process). A new `.ps1` must be added to `tests/run_pester.ps1`. Python tests
   load scripts by path through `tests/_loader.py` and mock only process/PATH boundaries
   (`subprocess.run`, `shutil.which`).
 - HTML reports land under `coverage/` on local runs.
@@ -129,7 +134,8 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
 ## Coverage Contract
 
 - **Floor**: **90%** line coverage for both the kcov shell report and the coverage.py Python
-  report (`fail_under` in `pyproject.toml`). CI fails below this via
+  report (`fail_under` in `pyproject.toml`) and the Pester PowerShell report (`tests/run_pester.ps1`).
+  CI fails below this via
   [`scripts/coverage_checks/check_coverage_threshold.py`](scripts/coverage_checks/check_coverage_threshold.py)
   on transformed Cobertura XML.
 - **Badge**: [`assets/coverage.svg`](assets/coverage.svg) is **not** updated by CI.
@@ -142,10 +148,11 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
 
 - Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on push/PR to
   `main` / `master`.
-- Order: **quality** → parallel **unit / component / e2e / python-tests** → **coverage-report**
+- Order: **quality** → parallel **unit / component / e2e / python-tests / powershell-tests** → **coverage-report**
   (merge, transform, sticky PR comment, hard 90% gate) → **sonarqube**, which runs last
   because it consumes the merged `cobertura.xml` that `coverage-report` publishes and the
-  `coverage-python.xml` that `python-tests` publishes (`sonar.python.coverage.reportPaths`).
+  `coverage-python.xml` that `python-tests` publishes (`sonar.python.coverage.reportPaths`) and the
+  generic-format `coverage-powershell.xml` that `powershell-tests` publishes.
 - The **sonarqube** job scans with `SonarSource/sonarqube-scan-action` and then blocks on
   `sonarqube-quality-gate-action`; it checks out with `fetch-depth: 0` so Sonar can attribute
   new code correctly. It is gated on the `SONAR_ENABLED` repository **variable** being `"true"`
