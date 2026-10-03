@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from _loader import load_script
+from _loader import REPO_ROOT, load_script
 
 
 class CheckLineLengthTests(unittest.TestCase):
@@ -42,6 +42,9 @@ class CheckLineLengthTests(unittest.TestCase):
         with contextlib.redirect_stdout(out):
             code = self.module.main()
         return code, out.getvalue()
+
+    def test_root_is_repository_root(self) -> None:
+        self.assertEqual(self._old_root, REPO_ROOT)
 
     def test_should_skip_rules(self) -> None:
         self.assertTrue(self.module.should_skip(self.root / ".git" / "config"))

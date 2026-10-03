@@ -70,6 +70,7 @@ backgrounds, and updates the login welcome title and message from Bing metadata.
   - YAML / workflows: yamllint, actionlint
   - Line length: **≤140** characters for all non-Markdown text
     ([`scripts/quality/check_line_length.py`](scripts/quality/check_line_length.py))
+    — scans the whole repo, minus generated/gitignored trees (`reports/`, `coverage*/`, caches)
   - Complexity: **≤10** per function for Python, shell, and PowerShell
     ([`scripts/quality/check_complexity.py`](scripts/quality/check_complexity.py))
 - **Failure handling**: Do not hide, suppress, or downgrade real failures. Prefer
