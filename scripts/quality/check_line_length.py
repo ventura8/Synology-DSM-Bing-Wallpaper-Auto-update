@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 
 MAX_LENGTH = 140
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 
 EXCLUDED_DIRS = {
     ".git",
@@ -22,6 +22,9 @@ EXCLUDED_DIRS = {
     "raw_coverage_comp",
     "raw_coverage_e2e",
     "coverage_inputs",
+    "coverage_final",
+    "reports",
+    ".pre-commit-cache",
     "node_modules",
     "__pycache__",
 }
