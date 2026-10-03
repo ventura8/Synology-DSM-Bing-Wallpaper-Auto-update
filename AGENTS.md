@@ -100,6 +100,7 @@ backgrounds, and updates the login welcome title and message from Bing metadata.
 | Unit | `run_kcov_cases.sh unit` in DSM mock | Narrow script/path coverage |
 | Component | `run_kcov_cases.sh component` | Integrated pieces against mock FS; also `archive_write_cases.sh` (sourced helpers, fail-closed branches) |
 | E2E | `run_kcov_cases.sh e2e` | Full apply path; verified by `tests/verify_dsm_mock.sh` |
+| Python | `python -m coverage run -m unittest discover -s tests -p "test_*.py"` | Helpers under `scripts/` (coverage.py, `fail_under = 90`) |
 
 Local orchestration (builds image, runs lanes, merges coverage, updates badge):
 
@@ -115,14 +116,19 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
   container and chowns the merged report back to the invoking user. Host-side `rm` and the
   transform/badge steps both fail on root-owned leftovers otherwise.
 
-- Coverage is gathered with **kcov** on the product shell script.
+- Coverage is gathered with **kcov** on the product shell script and with **coverage.py** on the
+  Python helpers under `scripts/` (settings in [`pyproject.toml`](pyproject.toml)). Sonar counts both,
+  so an untested helper drags the Sonar figure down even when the kcov gate is green. Python tests
+  load scripts by path through `tests/_loader.py` and mock only process/PATH boundaries
+  (`subprocess.run`, `shutil.which`).
 - HTML reports land under `coverage/` on local runs.
 - CI runs the same three lanes in parallel after the quality job, then merges in
   `coverage-report` ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ## Coverage Contract
 
-- **Floor**: **90%** line coverage. CI fails below this via
+- **Floor**: **90%** line coverage for both the kcov shell report and the coverage.py Python
+  report (`fail_under` in `pyproject.toml`). CI fails below this via
   [`scripts/coverage_checks/check_coverage_threshold.py`](scripts/coverage_checks/check_coverage_threshold.py)
   on transformed Cobertura XML.
 - **Badge**: [`assets/coverage.svg`](assets/coverage.svg) is **not** updated by CI.
@@ -135,9 +141,10 @@ Local orchestration (builds image, runs lanes, merges coverage, updates badge):
 
 - Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on push/PR to
   `main` / `master`.
-- Order: **quality** → parallel **unit / component / e2e** → **coverage-report**
+- Order: **quality** → parallel **unit / component / e2e / python-tests** → **coverage-report**
   (merge, transform, sticky PR comment, hard 90% gate) → **sonarqube**, which runs last
-  because it consumes the merged `cobertura.xml` that `coverage-report` publishes.
+  because it consumes the merged `cobertura.xml` that `coverage-report` publishes and the
+  `coverage-python.xml` that `python-tests` publishes (`sonar.python.coverage.reportPaths`).
 - The **sonarqube** job scans with `SonarSource/sonarqube-scan-action` and then blocks on
   `sonarqube-quality-gate-action`; it checks out with `fetch-depth: 0` so Sonar can attribute
   new code correctly. It is gated on the `SONAR_ENABLED` repository **variable** being `"true"`

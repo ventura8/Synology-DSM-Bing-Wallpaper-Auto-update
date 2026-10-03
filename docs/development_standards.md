@@ -2,7 +2,7 @@
 
 This document outlines the coding standards, environment management, and testing requirements for the project.
 
-**Current release:** [v1.0.5](releases/v1.0.5.md)
+**Current release:** [v1.0.6](releases/v1.0.6.md)
 
 ## Environment & Dependency Management
 
@@ -81,7 +81,10 @@ This document outlines the coding standards, environment management, and testing
 ## Testing & Coverage
 
 - **Mandatory Coverage**: The project target is **90%+ code coverage**.
-- **Enforcement**: CI (GitHub Actions) will fail if coverage drops below 90%.
+- **Enforcement**: CI (GitHub Actions) will fail if coverage drops below 90%, for both the shell
+  script (kcov) and the Python helpers under `scripts/` (coverage.py, `python-tests` job).
+  Run the Python lane locally with
+  `python -m coverage run -m unittest discover -s tests -p "test_*.py" && python -m coverage report`.
 - **Local Testing**:
   - Run the mandatory quality gate before tests:
     ```powershell

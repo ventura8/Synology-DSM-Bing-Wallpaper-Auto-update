@@ -41,3 +41,5 @@ __pycache__/
 # Un-ignore assets for documentation screenshots and coverage badge
 !assets/*.png
 !assets/*.svg
+.coverage
+coverage-python.xml

@@ -43,6 +43,8 @@ contract from `AGENTS.md`.
 1. **Coverage contract**:
 
    - Floor: **90%** (`scripts/coverage_checks/check_coverage_threshold.py`)
+   - Python helpers: `python -m coverage run -m unittest discover -s tests -p "test_*.py"`
+     then `python -m coverage report` (90% `fail_under`; uploaded to Sonar by CI)
    - Transform Cobertura as CI does (`tests/transform_coverage.py`) when
      inspecting reports manually
    - **Badge**: `assets/coverage.svg` is **not** updated by CI — commit it after

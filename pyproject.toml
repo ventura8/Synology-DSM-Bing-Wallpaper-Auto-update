@@ -26,3 +26,11 @@ strict_equality = true
 show_error_codes = true
 pretty = true
 files = ["tests", "scripts"]
+
+[tool.coverage.run]
+source = ["scripts"]
+relative_files = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
